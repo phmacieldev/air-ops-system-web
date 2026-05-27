@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { LayoutDashboard, Users, Plane, FileText, BookOpen, LogOut } from "lucide-react";
+import { LayoutDashboard, Users, Plane, FileText, BookOpen, LogOut, UserPlus } from "lucide-react";
 
 const NAV_ITEMS = [
   { label: "Dashboard",        href: "/dashboard", Icon: LayoutDashboard },
@@ -135,6 +135,18 @@ export function Sidebar() {
             active={pathname === href}
           />
         ))}
+        {/* Admin-only: cadastro de usuário */}
+        {(user?.role === "LEAD" || user?.role === "SUPERVISOR") && (
+          <>
+            <div className="my-1 mx-3" style={{ borderTop: "1px solid #1c2a3a" }} />
+            <NavItem
+              href="/register"
+              label="Cadastrar Membro"
+              Icon={UserPlus}
+              active={pathname === "/register"}
+            />
+          </>
+        )}
       </nav>
 
       {/* User info + Logout */}

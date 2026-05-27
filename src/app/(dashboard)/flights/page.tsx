@@ -206,6 +206,19 @@ export default function FlightsPage() {
 
   const recentFlights = flights.slice(0, 5);
 
+  // ── Filters ──
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterType,   setFilterType]   = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+
+  const filteredFlights = flights.filter((f) => {
+    const q = filterSearch.toLowerCase();
+    const matchSearch = !q || f.pilotCallsign.toLowerCase().includes(q) || f.pilotName.toLowerCase().includes(q);
+    const matchType   = !filterType   || f.flightType   === filterType;
+    const matchStatus = !filterStatus || f.flightStatus === filterStatus;
+    return matchSearch && matchType && matchStatus;
+  });
+
   return (
     <div className="p-3 md:p-6 space-y-4 min-h-full" style={{ background: "#0a0d12" }}>
 
@@ -457,6 +470,105 @@ export default function FlightsPage() {
           </div>
 
         </div>
+      </div>
+
+      {/* Histórico completo com filtros */}
+      <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+        <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: "1px solid #1c2a3a" }}>
+          <span className="text-[11px] font-mono tracking-[1.5px] uppercase shrink-0" style={{ color: "#e8c97e" }}>
+            Histórico de Protocolos
+          </span>
+          <span className="text-[10px] font-mono" style={{ color: "#5a7a9a" }}>{filteredFlights.length} reg.</span>
+        </div>
+        {/* Filter bar */}
+        <div className="flex flex-wrap gap-2 px-4 py-3" style={{ borderBottom: "1px solid #1c2a3a" }}>
+          <input
+            type="text"
+            placeholder="Buscar piloto..."
+            value={filterSearch}
+            onChange={(e) => setFilterSearch(e.target.value)}
+            className="font-mono text-[12px] px-3 py-1.5 rounded outline-none"
+            style={{ background: "#0a0d12", border: "1px solid #1c2a3a", color: "#c8d6e5", minWidth: 160 }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "#e8c97e")}
+            onBlur={(e)  => (e.currentTarget.style.borderColor = "#1c2a3a")}
+          />
+          <select
+            value={filterType}
+            onChange={(e) => setFilterType(e.target.value)}
+            className="font-mono text-[12px] px-3 py-1.5 rounded outline-none"
+            style={{ background: "#0a0d12", border: "1px solid #1c2a3a", color: "#c8d6e5" }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "#e8c97e")}
+            onBlur={(e)  => (e.currentTarget.style.borderColor = "#1c2a3a")}
+          >
+            <option value="">Todos os tipos</option>
+            {FLIGHT_TYPE_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+          </select>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="font-mono text-[12px] px-3 py-1.5 rounded outline-none"
+            style={{ background: "#0a0d12", border: "1px solid #1c2a3a", color: "#c8d6e5" }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = "#e8c97e")}
+            onBlur={(e)  => (e.currentTarget.style.borderColor = "#1c2a3a")}
+          >
+            <option value="">Todos os status</option>
+            <option value="PENDING">Pendente</option>
+            <option value="APPROVED">Aprovado</option>
+            <option value="REJECTED">Rejeitado</option>
+          </select>
+          {(filterSearch || filterType || filterStatus) && (
+            <button
+              onClick={() => { setFilterSearch(""); setFilterType(""); setFilterStatus(""); }}
+              className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded"
+              style={{ background: "#1c2a3a", color: "#5a7a9a" }}>
+              Limpar
+            </button>
+          )}
+        </div>
+        {/* List */}
+        {filteredFlights.length === 0 ? (
+          <p className="py-10 text-center font-mono text-[11px] tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
+            Nenhum protocolo encontrado
+          </p>
+        ) : (
+          <div>
+            <div className="hidden md:grid gap-x-3 px-4 py-1.5 text-[9px] font-mono tracking-[1.5px] uppercase"
+              style={{ gridTemplateColumns: "1.4fr 1.2fr 0.9fr 0.7fr 0.7fr 0.8fr", borderBottom: "1px solid #1c2a3a", color: "#5a7a9a" }}>
+              {["Piloto", "Tipo", "Aeronave", "Início", "Duração", "Status"].map(h => <div key={h}>{h}</div>)}
+            </div>
+            {filteredFlights.map((f) => {
+              const mins = f.endAt ? calcDurationMins(f.startedAt, f.endAt) : null;
+              return (
+                <div key={f.id}>
+                  {/* Desktop row */}
+                  <div className="hidden md:grid gap-x-3 px-4 py-2.5 items-center transition-colors"
+                    style={{ gridTemplateColumns: "1.4fr 1.2fr 0.9fr 0.7fr 0.7fr 0.8fr", borderBottom: "1px solid #111823" }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+                    <div>
+                      <div className="font-mono text-sm font-bold leading-none" style={{ color: "#c8d6e5" }}>{f.pilotCallsign}</div>
+                      <div className="font-mono text-[10px] mt-0.5" style={{ color: "#5a7a9a" }}>{f.pilotName}</div>
+                    </div>
+                    <TypeBadge type={f.flightType} />
+                    <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{AIRCRAFT_LABEL[f.aircraft] ?? f.aircraft}</div>
+                    <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{formatTime(f.startedAt)}</div>
+                    <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>{formatMins(mins)}</div>
+                    <StatusBadge status={f.flightStatus} />
+                  </div>
+                  {/* Mobile card */}
+                  <div className="md:hidden flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: "1px solid #111823" }}>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-mono text-sm font-bold" style={{ color: "#c8d6e5" }}>{f.pilotCallsign}</div>
+                      <div className="font-mono text-[10px]" style={{ color: "#5a7a9a" }}>{f.pilotName} · {formatTime(f.startedAt)}</div>
+                    </div>
+                    <TypeBadge type={f.flightType} />
+                    <StatusBadge status={f.flightStatus} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Aprovações pendentes — visível apenas para LEAD */}

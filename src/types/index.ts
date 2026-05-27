@@ -65,6 +65,13 @@ export interface Document {
   updatedAt: string;
 }
 
+export interface Rank {
+  id: string;
+  name: string;
+  hierarchyLevel: number;
+  description: string;
+}
+
 export interface ApiError {
   status: number;
   error: string;

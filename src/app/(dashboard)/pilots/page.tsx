@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Pilot } from "@/types";
 
@@ -50,16 +51,17 @@ function scoreColor(score: number) {
 }
 
 /* ─── Row (tablet/desktop ≥ 768px) ─── */
-function PilotRow({ pilot }: { pilot: Pilot }) {
+function PilotRow({ pilot, onClick }: { pilot: Pilot; onClick: () => void }) {
   const rankStyle  = getRankStyle(pilot.rankName);
   const statusCfg  = STATUS_STYLES[pilot.status] ?? { label: pilot.status, color: "#5a7a9a" };
   return (
     <div
-      className="grid px-4 py-2.5 items-center transition-colors cursor-default"
+      className="grid px-4 py-2.5 items-center transition-colors cursor-pointer"
       style={{
         gridTemplateColumns: "2fr 1fr 0.8fr 0.8fr 0.7fr",
         borderBottom: "1px solid #111823",
       }}
+      onClick={onClick}
       onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
     >
@@ -114,11 +116,11 @@ function PilotRow({ pilot }: { pilot: Pilot }) {
 }
 
 /* ─── Card (mobile < 768px) ─── */
-function PilotCard({ pilot }: { pilot: Pilot }) {
+function PilotCard({ pilot, onClick }: { pilot: Pilot; onClick: () => void }) {
   const rankStyle = getRankStyle(pilot.rankName);
   const statusCfg = STATUS_STYLES[pilot.status] ?? { label: pilot.status, color: "#5a7a9a" };
   return (
-    <div className="px-4 py-3 space-y-2.5" style={{ borderBottom: "1px solid #1c2a3a" }}>
+    <div className="px-4 py-3 space-y-2.5 cursor-pointer" onClick={onClick} style={{ borderBottom: "1px solid #1c2a3a" }}>
       <div className="flex items-center gap-3">
         <div
           className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-mono font-bold shrink-0"
@@ -161,6 +163,7 @@ function PilotCard({ pilot }: { pilot: Pilot }) {
 }
 
 export default function PilotsPage() {
+  const router = useRouter();
   const [pilots, setPilots] = useState<Pilot[]>([]);
   const [search, setSearch]   = useState("");
   const [loading, setLoading] = useState(true);
@@ -247,12 +250,12 @@ export default function PilotsPage() {
                   </div>
                 ))}
               </div>
-              {filtered.map((p) => <PilotRow key={p.id} pilot={p} />)}
+              {filtered.map((p) => <PilotRow key={p.id} pilot={p} onClick={() => router.push(`/pilots/${p.id}`)} />)}
             </div>
 
             {/* Mobile */}
             <div className="md:hidden">
-              {filtered.map((p) => <PilotCard key={p.id} pilot={p} />)}
+              {filtered.map((p) => <PilotCard key={p.id} pilot={p} onClick={() => router.push(`/pilots/${p.id}`)} />)}
             </div>
           </>
         )}

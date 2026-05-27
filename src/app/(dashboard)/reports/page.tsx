@@ -261,6 +261,16 @@ export default function ReportsPage() {
   const canReview  = user?.role === "LEAD" || user?.role === "SUPERVISOR";
   const previewScore = seizures * 5 + chases * 3 + operations * 3 - accidents * 5;
 
+  const [filterSearch, setFilterSearch] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+
+  const filteredReports = reports.filter((r) => {
+    const q = filterSearch.toLowerCase();
+    const matchSearch = !q || r.pilotCallsign.toLowerCase().includes(q) || r.pilotName.toLowerCase().includes(q);
+    const matchStatus = !filterStatus || r.status === filterStatus;
+    return matchSearch && matchStatus;
+  });
+
   async function approveReport(id: string) {
     if (!user) return;
     setApproving(id);
@@ -455,6 +465,44 @@ export default function ReportsPage() {
             Score = Apreensões ×5 + Perseguições ×3 + Ops ×3 − Acidentes ×5
           </span>
         </div>
+        {/* Filter bar */}
+        {!loading && reports.length > 0 && (
+          <div className="flex flex-wrap gap-2 px-4 py-3" style={{ borderBottom: "1px solid #1c2a3a" }}>
+            <input
+              type="text"
+              placeholder="Buscar piloto..."
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              className="font-mono text-[12px] px-3 py-1.5 rounded outline-none"
+              style={{ background: "#0a0d12", border: "1px solid #1c2a3a", color: "#c8d6e5", minWidth: 160 }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "#e8c97e")}
+              onBlur={(e)  => (e.currentTarget.style.borderColor = "#1c2a3a")}
+            />
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="font-mono text-[12px] px-3 py-1.5 rounded outline-none"
+              style={{ background: "#0a0d12", border: "1px solid #1c2a3a", color: "#c8d6e5" }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = "#e8c97e")}
+              onBlur={(e)  => (e.currentTarget.style.borderColor = "#1c2a3a")}
+            >
+              <option value="">Todos os status</option>
+              <option value="PENDING">Pendente</option>
+              <option value="APPROVED">Aprovado</option>
+            </select>
+            {(filterSearch || filterStatus) && (
+              <button
+                onClick={() => { setFilterSearch(""); setFilterStatus(""); }}
+                className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded"
+                style={{ background: "#1c2a3a", color: "#5a7a9a" }}>
+                Limpar
+              </button>
+            )}
+            <span className="font-mono text-[10px] self-center" style={{ color: "#5a7a9a" }}>
+              {filteredReports.length} resultado{filteredReports.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+        )}
 
         {loading ? (
           <div className="py-16 text-center text-[11px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
@@ -472,7 +520,7 @@ export default function ReportsPage() {
                   <div key={h} className="text-[9px] font-mono tracking-[1.5px] uppercase" style={{ color: "#5a7a9a" }}>{h}</div>
                 ))}
               </div>
-              {reports.map((r) => (
+              {filteredReports.map((r) => (
                 <ReportRow
                   key={r.id}
                   report={r}
@@ -483,7 +531,7 @@ export default function ReportsPage() {
               ))}
             </div>
             <div className="md:hidden">
-              {reports.map((r) => (
+              {filteredReports.map((r) => (
                 <ReportCard
                   key={r.id}
                   report={r}
