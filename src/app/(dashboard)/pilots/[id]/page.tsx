@@ -64,6 +64,90 @@ function StatusDot({ status }: { status: string }) {
   );
 }
 
+// ── Edit profile modal ────────────────────────────────────────────────────
+
+const inputStyle: React.CSSProperties = {
+  background: "#0a0d12", border: "1px solid #1c2a3a",
+  borderRadius: "6px", padding: "8px 12px",
+  color: "#c8d6e5", fontFamily: "monospace", fontSize: "13px", width: "100%", outline: "none",
+};
+
+function EditModal({
+  pilot,
+  onConfirm,
+  onClose,
+  saving,
+}: {
+  pilot: Pilot;
+  onConfirm: (data: { callsign: string; profileImageUrl: string; status: string }) => void;
+  onClose: () => void;
+  saving: boolean;
+}) {
+  const [callsign,        setCallsign]        = useState<string>(pilot.callsign);
+  const [profileImageUrl, setProfileImageUrl] = useState<string>(pilot.profileImageUrl ?? "");
+  const [status,          setStatus]          = useState<string>(pilot.status);
+
+  function focusBorder(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
+    e.currentTarget.style.borderColor = "#e8c97e";
+  }
+  function blurBorder(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
+    e.currentTarget.style.borderColor = "#1c2a3a";
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ background: "rgba(0,0,0,0.7)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="w-full max-w-sm rounded-lg overflow-hidden"
+        style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+        <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #1c2a3a" }}>
+          <span className="font-mono text-[11px] tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
+            Editar Perfil
+          </span>
+          <button onClick={onClose} className="font-mono text-lg leading-none" style={{ color: "#5a7a9a" }}>×</button>
+        </div>
+        <div className="p-4 space-y-3">
+          <div className="space-y-1">
+            <label className="block font-mono text-[10px] tracking-[1.5px] uppercase" style={{ color: "#5a7a9a" }}>Callsign</label>
+            <input type="text" value={callsign} onChange={(e) => setCallsign(e.target.value)}
+              style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
+          </div>
+          <div className="space-y-1">
+            <label className="block font-mono text-[10px] tracking-[1.5px] uppercase" style={{ color: "#5a7a9a" }}>Status</label>
+            <select value={status} onChange={(e) => setStatus(e.target.value)}
+              style={{ ...inputStyle, cursor: "pointer" }} onFocus={focusBorder} onBlur={blurBorder}>
+              <option value="ACTIVE">Ativo</option>
+              <option value="INACTIVE">Inativo</option>
+              <option value="SUSPENDED">Suspenso</option>
+              <option value="TRAINING">Treinamento</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="block font-mono text-[10px] tracking-[1.5px] uppercase" style={{ color: "#5a7a9a" }}>
+              URL da foto (opcional)
+            </label>
+            <input type="url" value={profileImageUrl} onChange={(e) => setProfileImageUrl(e.target.value)}
+              placeholder="https://..." style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose}
+              className="flex-1 font-mono text-[11px] tracking-[1px] uppercase py-2 rounded"
+              style={{ background: "#1c2a3a", color: "#5a7a9a" }}>
+              Cancelar
+            </button>
+            <button disabled={saving || !callsign}
+              onClick={() => onConfirm({ callsign, profileImageUrl, status })}
+              className="flex-1 font-mono text-[11px] tracking-[1px] uppercase py-2 rounded"
+              style={{ background: "#e8c97e", color: "#0a0d12", opacity: (saving || !callsign) ? 0.6 : 1 }}>
+              {saving ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Rank change modal ─────────────────────────────────────────────────────
 
 function RankModal({
@@ -172,7 +256,8 @@ export default function PilotProfilePage() {
   const [ranks,    setRanks]    = useState<Rank[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [saving,   setSaving]   = useState(false);
+  const [showEdit,  setShowEdit]  = useState(false);
+  const [saving,    setSaving]    = useState(false);
 
   const canManage = user?.role === "LEAD" || user?.role === "SUPERVISOR";
 
@@ -200,6 +285,21 @@ export default function PilotProfilePage() {
       const updated = await api.put<Pilot>(`/pilots/${pilot.id}`, { rankId });
       setPilot(updated);
       setShowModal(false);
+    } catch { /* silently ignore */ }
+    finally { setSaving(false); }
+  }
+
+  async function saveEdit(data: { callsign: string; profileImageUrl: string; status: string }) {
+    if (!pilot) return;
+    setSaving(true);
+    try {
+      const updated = await api.put<Pilot>(`/pilots/${pilot.id}`, {
+        callsign:        data.callsign,
+        profileImageUrl: data.profileImageUrl || null,
+        status:          data.status,
+      });
+      setPilot(updated);
+      setShowEdit(false);
     } catch { /* silently ignore */ }
     finally { setSaving(false); }
   }
@@ -238,6 +338,15 @@ export default function PilotProfilePage() {
           ranks={ranks}
           onConfirm={changeRank}
           onClose={() => setShowModal(false)}
+          saving={saving}
+        />
+      )}
+
+      {showEdit && (
+        <EditModal
+          pilot={pilot}
+          onConfirm={saveEdit}
+          onClose={() => setShowEdit(false)}
           saving={saving}
         />
       )}
@@ -303,11 +412,18 @@ export default function PilotProfilePage() {
             <div className="font-mono text-xl font-bold" style={{ color: "#3dd68c" }}>{flights.length}</div>
           </div>
           {canManage && (
-            <button onClick={() => setShowModal(true)}
-              className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-2 rounded mt-1"
-              style={{ background: "#1c2a3a", color: "#e8c97e", border: "1px solid #e8c97e33" }}>
-              Alterar Rank
-            </button>
+            <>
+              <button onClick={() => setShowModal(true)}
+                className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-2 rounded mt-1"
+                style={{ background: "#1c2a3a", color: "#e8c97e", border: "1px solid #e8c97e33" }}>
+                Alterar Rank
+              </button>
+              <button onClick={() => setShowEdit(true)}
+                className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-2 rounded"
+                style={{ background: "#1c2a3a", color: "#4a90e2", border: "1px solid #4a90e233" }}>
+                Editar Perfil
+              </button>
+            </>
           )}
         </div>
       </div>

@@ -17,13 +17,16 @@ const inputBase: React.CSSProperties = {
   outline: "none",
 };
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
       <label className="block font-mono text-[10px] tracking-[1.5px] uppercase" style={{ color: "#5a7a9a" }}>
         {label}
       </label>
       {children}
+      {hint && (
+        <p className="font-mono text-[9px]" style={{ color: "#3a5a7a" }}>{hint}</p>
+      )}
     </div>
   );
 }
@@ -32,26 +35,37 @@ export default function RegisterPage() {
   const { user } = useAuth();
   const router   = useRouter();
 
-  // Redirect if not admin
   if (user && user.role !== "LEAD" && user.role !== "SUPERVISOR") {
     router.replace("/dashboard");
     return null;
   }
 
-  // User fields
-  const [name,     setName]     = useState("");
-  const [email,    setEmail]    = useState("");
-  const [password, setPassword] = useState("");
-
-  // Pilot fields
+  // Pilot fields (collected first)
   const [fullName,        setFullName]        = useState("");
   const [callsign,        setCallsign]        = useState("");
   const [discordId,       setDiscordId]       = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
 
+  // Account fields (name auto-synced from fullName)
+  const [name,         setName]         = useState("");
+  const [nameLinked,   setNameLinked]   = useState(true);
+  const [email,        setEmail]        = useState("");
+  const [password,     setPassword]     = useState("");
+
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  function onFullNameChange(val: string) {
+    setFullName(val);
+    if (nameLinked) setName(val);
+  }
+
+  function onNameChange(val: string) {
+    setName(val);
+    // Re-link only if user types back the exact fullName value
+    setNameLinked(val === fullName);
+  }
 
   function focus(e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) {
     e.currentTarget.style.borderColor = "#e8c97e";
@@ -65,18 +79,14 @@ export default function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      // 1. Create user account
-      await api.post("/auth/register", { name, email, password });
-
-      // 2. Create pilot linked to that user
+      await api.post("/auth/register", { name: name || fullName, email, password });
       await api.post("/pilots", {
-        fullName:        fullName || name,
+        fullName,
         callsign,
         discordId,
         profileImageUrl: profileImageUrl || null,
         userEmail:       email,
       });
-
       setSuccess(true);
       setTimeout(() => router.push("/pilots"), 1800);
     } catch (err: unknown) {
@@ -109,30 +119,7 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
 
-          {/* Seção: Conta */}
-          <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
-            <div className="px-4 py-2.5" style={{ borderBottom: "1px solid #1c2a3a" }}>
-              <span className="font-mono text-[11px] tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
-                Dados de Acesso
-              </span>
-            </div>
-            <div className="p-4 space-y-3">
-              <Field label="Nome completo">
-                <input type="text" required value={name} onChange={(e) => setName(e.target.value)}
-                  placeholder="Henry Shnneider" style={inputBase} onFocus={focus} onBlur={blur} />
-              </Field>
-              <Field label="Email">
-                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
-                  placeholder="henry@email.com" style={inputBase} onFocus={focus} onBlur={blur} />
-              </Field>
-              <Field label="Senha provisória">
-                <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
-                  placeholder="mín. 6 caracteres" style={inputBase} onFocus={focus} onBlur={blur} />
-              </Field>
-            </div>
-          </div>
-
-          {/* Seção: Piloto */}
+          {/* Seção: Piloto (primeiro) */}
           <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
             <div className="px-4 py-2.5" style={{ borderBottom: "1px solid #1c2a3a" }}>
               <span className="font-mono text-[11px] tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
@@ -141,9 +128,9 @@ export default function RegisterPage() {
             </div>
             <div className="p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Nome de guerra (opcional)">
-                  <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)}
-                    placeholder="Igual ao nome completo" style={inputBase} onFocus={focus} onBlur={blur} />
+                <Field label="Nome de guerra *">
+                  <input type="text" required value={fullName} onChange={(e) => onFullNameChange(e.target.value)}
+                    placeholder="Henry Schneider" style={inputBase} onFocus={focus} onBlur={blur} />
                 </Field>
                 <Field label="Callsign / Matrícula *">
                   <input type="text" required value={callsign} onChange={(e) => setCallsign(e.target.value)}
@@ -161,6 +148,34 @@ export default function RegisterPage() {
               <p className="font-mono text-[9px]" style={{ color: "#3a5a7a" }}>
                 Rank inicial: TRAINEE · Score: 0 · Pode ser alterado no perfil do piloto após o cadastro
               </p>
+            </div>
+          </div>
+
+          {/* Seção: Conta (segundo) */}
+          <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+            <div className="px-4 py-2.5" style={{ borderBottom: "1px solid #1c2a3a" }}>
+              <span className="font-mono text-[11px] tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
+                Dados de Acesso
+              </span>
+            </div>
+            <div className="p-4 space-y-3">
+              <Field
+                label="Nome na conta"
+                hint={nameLinked ? "Preenchido automaticamente do nome de guerra — altere se necessário" : undefined}
+              >
+                <input type="text" required value={name} onChange={(e) => onNameChange(e.target.value)}
+                  placeholder="Henry Schneider"
+                  style={{ ...inputBase, borderColor: nameLinked ? "#1c2a3a" : "#4a90e244" }}
+                  onFocus={focus} onBlur={blur} />
+              </Field>
+              <Field label="Email *">
+                <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                  placeholder="henry@email.com" style={inputBase} onFocus={focus} onBlur={blur} />
+              </Field>
+              <Field label="Senha provisória *">
+                <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
+                  placeholder="mín. 6 caracteres" style={inputBase} onFocus={focus} onBlur={blur} />
+              </Field>
             </div>
           </div>
 

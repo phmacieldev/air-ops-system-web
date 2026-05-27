@@ -141,8 +141,8 @@ export default function FlightsPage() {
   const today   = new Date().toISOString().split("T")[0];
   const timeNow = new Date().toTimeString().slice(0, 5);
 
-  const [flightType, setFlightType] = useState(FLIGHT_TYPE_OPTIONS[0].value);
-  const [aircraft, setAircraft]     = useState(AIRCRAFT_OPTIONS[0].value);
+  const [flightType, setFlightType] = useState<string>(FLIGHT_TYPE_OPTIONS[0].value);
+  const [aircraft, setAircraft]     = useState<string>(AIRCRAFT_OPTIONS[0].value);
   const [date, setDate]             = useState(today);
   const [startTime, setStartTime]   = useState(timeNow);
   const [endTime, setEndTime]       = useState("");

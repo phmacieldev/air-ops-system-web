@@ -5,6 +5,26 @@ function getToken(): string | null {
   return localStorage.getItem("asd_token");
 }
 
+// Deduplicates concurrent refresh attempts
+let refreshing: Promise<string | null> | null = null;
+
+async function doRefresh(): Promise<string | null> {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${BASE_URL}/auth/refresh`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const { token: newToken } = await res.json();
+    localStorage.setItem("asd_token", newToken);
+    return newToken;
+  } catch {
+    return null;
+  }
+}
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();
 
@@ -16,6 +36,27 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       ...options.headers,
     },
   });
+
+  if (res.status === 401 && path !== "/auth/refresh" && path !== "/auth/login") {
+    if (!refreshing) refreshing = doRefresh().finally(() => { refreshing = null; });
+    const newToken = await refreshing;
+    if (newToken) {
+      const retry = await fetch(`${BASE_URL}${path}`, {
+        ...options,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${newToken}`,
+          ...options.headers,
+        },
+      });
+      if (retry.ok) {
+        if (retry.status === 204) return undefined as T;
+        return retry.json();
+      }
+    }
+    if (typeof window !== "undefined") window.dispatchEvent(new Event("auth:unauthorized"));
+    throw new Error("Sessão expirada. Faça login novamente.");
+  }
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
