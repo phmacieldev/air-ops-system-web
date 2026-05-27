@@ -44,6 +44,8 @@ export interface PerformanceReport {
   id: string;
   pilotName: string;
   pilotCallsign: string;
+  pilotRank: string;
+  pilotAccumulatedScore: number;
   flightId: string;
   seizures: number;
   chases: number;

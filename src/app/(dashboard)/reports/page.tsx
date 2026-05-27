@@ -5,36 +5,43 @@ import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { FlightLog, PerformanceReport } from "@/types";
 
-// ── Rank thresholds ───────────────────────────────────────────────────────
+// ── Rank helpers ──────────────────────────────────────────────────────────
 
-const RANK_THRESHOLDS = [
-  { label: "PILOT_SENIOR", min: 1000, color: "#e8c97e" },
-  { label: "PILOT_PLENO",  min: 600,  color: "#4a90e2" },
-  { label: "PILOT_STD",    min: 200,  color: "#3dd68c" },
-  { label: "TRAINEE",      min: 0,    color: "#5a7a9a" },
+const HIGH_RANKS = new Set(["LEAD", "SUPERVISOR", "INSTRUCTOR"]);
+
+const RANK_COLOR: Record<string, string> = {
+  LEAD:           "#e8c97e",
+  SUPERVISOR:     "#e8c97e",
+  INSTRUCTOR:     "#e8c97e",
+  PILOT_SENIOR:   "#e8c97e",
+  PILOT_PLENO:    "#4a90e2",
+  PILOT_STANDARD: "#3dd68c",
+  TRAINEE:        "#5a7a9a",
+};
+
+const SCORE_TIERS = [
+  { rank: "PILOT_SENIOR",   label: "PILOT_SENIOR", min: 1000, max: 1400 },
+  { rank: "PILOT_PLENO",    label: "PILOT_PLENO",  min: 600,  max: 1000 },
+  { rank: "PILOT_STANDARD", label: "PILOT_STD",    min: 200,  max: 600  },
+  { rank: "TRAINEE",        label: "TRAINEE",       min: 0,    max: 200  },
 ];
-
-function getRank(score: number) {
-  return RANK_THRESHOLDS.find((t) => score >= t.min)!;
-}
 
 // ── Sub-components ────────────────────────────────────────────────────────
 
-function ScoreBar({ score }: { score: number }) {
-  const idx  = RANK_THRESHOLDS.findIndex((t) => score >= t.min);
-  const tier = RANK_THRESHOLDS[idx];
-  const next = idx > 0 ? RANK_THRESHOLDS[idx - 1] : null;
-  const base = tier.min;
-  const cap  = next ? next.min : 1400;
-  const pct  = next ? Math.min(((score - base) / (cap - base)) * 100, 100) : 100;
+function ScoreBar({ pilotRank, pilotAccumulatedScore }: { pilotRank: string; pilotAccumulatedScore: number }) {
+  const color   = RANK_COLOR[pilotRank] ?? "#5a7a9a";
+  const isHigh  = HIGH_RANKS.has(pilotRank) || pilotRank === "PILOT_SENIOR";
+  const tier    = SCORE_TIERS.find((t) => t.rank === pilotRank) ?? SCORE_TIERS[SCORE_TIERS.length - 1];
+  const pct     = isHigh ? 100 : Math.min(Math.max(((pilotAccumulatedScore - tier.min) / (tier.max - tier.min)) * 100, 0), 100);
+  const label   = isHigh ? pilotRank : tier.label;
   return (
     <div className="space-y-1 w-full">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[9px] font-mono tracking-[1.5px] uppercase" style={{ color: tier.color }}>
-          {tier.label}
+        <span className="text-[9px] font-mono tracking-[1.5px] uppercase" style={{ color }}>
+          {label}
         </span>
-        <span className="text-[10px] font-mono" style={{ color: tier.color }}>
-          {score} pts
+        <span className="text-[10px] font-mono" style={{ color }}>
+          {pilotAccumulatedScore} pts
         </span>
       </div>
       <div className="h-2 rounded-full overflow-hidden" style={{ background: "#1c2a3a" }}>
@@ -75,13 +82,13 @@ function ReportCard({
   onApprove: (id: string) => void;
   approving: string | null;
 }) {
-  const rank = getRank(report.score);
+  const rankColor = RANK_COLOR[report.pilotRank] ?? "#5a7a9a";
   const busy = approving === report.id;
   return (
     <div className="px-4 py-3 space-y-3" style={{ borderBottom: "1px solid #1c2a3a" }}>
       <div className="flex items-center gap-2 flex-wrap">
         <div className="flex-1 min-w-0">
-          <div className="font-mono text-base font-bold leading-none" style={{ color: rank.color }}>
+          <div className="font-mono text-base font-bold leading-none" style={{ color: rankColor }}>
             {report.pilotCallsign}
           </div>
           <div className="font-mono text-[11px] mt-0.5" style={{ color: "#5a7a9a" }}>
@@ -113,7 +120,7 @@ function ReportCard({
           </div>
         ))}
       </div>
-      <ScoreBar score={report.score} />
+      <ScoreBar pilotRank={report.pilotRank} pilotAccumulatedScore={report.pilotAccumulatedScore} />
     </div>
   );
 }
@@ -130,22 +137,22 @@ function ReportRow({
   onApprove: (id: string) => void;
   approving: string | null;
 }) {
-  const rank = getRank(report.score);
+  const rankColor = RANK_COLOR[report.pilotRank] ?? "#5a7a9a";
   const busy = approving === report.id;
   return (
     <div
-      className="grid px-4 py-3 items-center transition-colors cursor-default"
+      className="grid gap-x-4 px-4 py-3 items-center transition-colors cursor-default"
       style={{
         gridTemplateColumns: canReview && report.status === "PENDING"
-          ? "1.2fr 0.55fr 0.65fr 0.55fr 0.55fr 1.4fr 0.75fr auto"
-          : "1.4fr 0.65fr 0.75fr 0.65fr 0.65fr 1.6fr 0.85fr",
+          ? "1.2fr 0.55fr 0.65fr 0.55fr 0.55fr 1.8fr 0.75fr auto"
+          : "1.4fr 0.55fr 0.65fr 0.55fr 0.55fr 1.8fr 0.85fr",
         borderBottom: "1px solid #111823",
       }}
       onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
     >
       <div>
-        <div className="font-mono text-sm font-bold leading-none" style={{ color: rank.color }}>
+        <div className="font-mono text-sm font-bold leading-none" style={{ color: rankColor }}>
           {report.pilotCallsign}
         </div>
         <div className="font-mono text-[11px] mt-0.5" style={{ color: "#5a7a9a" }}>
@@ -156,7 +163,7 @@ function ReportRow({
       <div className="font-mono text-lg font-bold" style={{ color: "#4a90e2" }}>{report.chases}</div>
       <div className="font-mono text-lg font-bold" style={{ color: "#3dd68c" }}>{report.operations}</div>
       <div className="font-mono text-lg font-bold" style={{ color: "#e24b4a" }}>{report.accidents}</div>
-      <ScoreBar score={report.score} />
+      <ScoreBar pilotRank={report.pilotRank} pilotAccumulatedScore={report.pilotAccumulatedScore} />
       <div className="flex justify-start">
         <StatusBadge status={report.status} />
       </div>
@@ -460,7 +467,7 @@ export default function ReportsPage() {
         ) : (
           <>
             <div className="hidden md:block">
-              <div className="grid px-4 py-2" style={{ gridTemplateColumns: "1.4fr 0.65fr 0.75fr 0.65fr 0.65fr 1.6fr 0.85fr", borderBottom: "1px solid #1c2a3a" }}>
+              <div className="grid gap-x-4 px-4 py-2" style={{ gridTemplateColumns: "1.4fr 0.55fr 0.65fr 0.55fr 0.55fr 1.8fr 0.85fr", borderBottom: "1px solid #1c2a3a" }}>
                 {["Piloto", "Apreens.", "Perseg.", "Ops", "Acid.", "Score", "Status"].map((h) => (
                   <div key={h} className="text-[9px] font-mono tracking-[1.5px] uppercase" style={{ color: "#5a7a9a" }}>{h}</div>
                 ))}

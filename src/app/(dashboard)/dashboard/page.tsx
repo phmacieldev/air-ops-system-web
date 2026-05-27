@@ -66,17 +66,50 @@ function getRankStyle(rankName: string) {
   return RANK_STYLES[rankName.toUpperCase()] ?? RANK_STYLES.TRAINEE;
 }
 
-function getInitials(callsign: string) {
-  return callsign
+const RANK_COLOR: Record<string, string> = {
+  LEAD:           "#e8c97e",
+  SUPERVISOR:     "#e8c97e",
+  INSTRUCTOR:     "#e8c97e",
+  PILOT_SENIOR:   "#4a90e2",
+  PILOT_PLENO:    "#3dd68c",
+  PILOT_STANDARD: "#3dd68c",
+  TRAINEE:        "#8a9ab8",
+};
+
+const MEDAL_COLORS = ["#e8c97e", "#8a9ab8", "#9a6030", "#3a4a5a"];
+
+function PilotAvatar({ name, callsign, photoUrl, size = 32 }: {
+  name?: string;
+  callsign: string;
+  photoUrl?: string | null;
+  size?: number;
+}) {
+  const initials = callsign
     .split(/[.\s_-]/)
     .slice(0, 2)
     .map((w) => w[0] ?? "")
     .join("")
     .toUpperCase()
     .slice(0, 2);
+  if (photoUrl) {
+    return (
+      <img
+        src={photoUrl}
+        alt={name ?? callsign}
+        className="rounded-full object-cover shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+  return (
+    <div
+      className="rounded-full flex items-center justify-center font-mono font-bold shrink-0"
+      style={{ width: size, height: size, background: "#1c2a3a", color: "#e8c97e", fontSize: size * 0.34 }}
+    >
+      {initials}
+    </div>
+  );
 }
-
-const MEDAL_COLORS = ["#e8c97e", "#8a9ab8", "#9a6030", "#3a4a5a"];
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -94,6 +127,8 @@ export default function DashboardPage() {
   const totalFlightHrs = Math.floor(pilots.reduce((a, p) => a + p.flightMinutes, 0) / 60);
   const pendingFlights = flights.filter((f) => f.flightStatus === "PENDING").length;
   const pendingReports = reports.filter((r) => r.status === "PENDING").length;
+
+  const pilotByCallsign = new Map(pilots.map((p) => [p.callsign, p]));
 
   const topPilots = [...pilots]
     .sort((a, b) => b.accumulatedScore - a.accumulatedScore)
@@ -167,24 +202,49 @@ export default function DashboardPage() {
                 Nenhum voo registrado
               </p>
             ) : (
-              recentFlights.map((f) => (
-                <div
-                  key={f.id}
-                  className="flex items-center gap-3 py-2.5"
-                  style={{ borderBottom: "1px solid #111823" }}
-                >
-                  <div className="font-mono text-[11px] min-w-[80px] shrink-0" style={{ color: "#5a7a9a" }}>
-                    {formatTime(f.startedAt)}
+              recentFlights.map((f) => {
+                const pilot = pilotByCallsign.get(f.pilotCallsign);
+                const callsignColor = pilot ? (RANK_COLOR[pilot.rankName] ?? "#c8d6e5") : "#c8d6e5";
+                const rankStyle = pilot ? getRankStyle(pilot.rankName) : getRankStyle("TRAINEE");
+                return (
+                  <div
+                    key={f.id}
+                    className="flex items-center gap-3 py-2.5"
+                    style={{ borderBottom: "1px solid #111823" }}
+                  >
+                    <PilotAvatar
+                      callsign={f.pilotCallsign}
+                      name={f.pilotName}
+                      photoUrl={pilot?.profileImageUrl}
+                      size={34}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-sm font-bold leading-none" style={{ color: callsignColor }}>
+                          {f.pilotCallsign}
+                        </span>
+                        {pilot && (
+                          <span
+                            className="text-[9px] font-mono tracking-[1px] uppercase px-1.5 py-0.5 rounded leading-none"
+                            style={{ background: rankStyle.bg, color: rankStyle.color, border: `1px solid ${rankStyle.border}` }}
+                          >
+                            {pilot.rankName}
+                          </span>
+                        )}
+                      </div>
+                      <div className="font-mono text-[10px] mt-0.5 truncate" style={{ color: "#5a7a9a" }}>
+                        {f.pilotName} · {formatTime(f.startedAt)}
+                      </div>
+                    </div>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <FlightTypeBadge type={f.flightType} />
+                      <span className="font-mono text-[11px] font-bold" style={{ color: "#e8c97e" }}>
+                        {formatDuration(f.startedAt, f.endAt)}
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex-1 font-mono text-sm truncate" style={{ color: "#c8d6e5" }}>
-                    {f.pilotCallsign}
-                  </div>
-                  <FlightTypeBadge type={f.flightType} />
-                  <div className="font-mono text-base font-bold min-w-[44px] text-right" style={{ color: "#e8c97e" }}>
-                    {formatDuration(f.startedAt, f.endAt)}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -203,34 +263,34 @@ export default function DashboardPage() {
               </p>
             ) : (
               topPilots.map((p, i) => {
-                const rankStyle = getRankStyle(p.rankName);
+                const rankStyle  = getRankStyle(p.rankName);
                 const medalColor = MEDAL_COLORS[i] ?? "#3a4a5a";
+                const callsignColor = RANK_COLOR[p.rankName] ?? "#c8d6e5";
                 return (
                   <div
                     key={p.id}
                     className="flex items-center gap-3 py-2.5"
                     style={{ borderBottom: "1px solid #111823" }}
                   >
-                    <div className="font-mono text-xl font-bold w-5 leading-none shrink-0" style={{ color: medalColor }}>
+                    <div className="font-mono text-xl font-bold w-5 leading-none shrink-0 text-center" style={{ color: medalColor }}>
                       {i + 1}
                     </div>
-                    <div
-                      className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-mono font-bold shrink-0"
-                      style={{ background: "#1c2a3a", color: "#e8c97e" }}
-                    >
-                      {getInitials(p.callsign)}
-                    </div>
+                    <PilotAvatar
+                      callsign={p.callsign}
+                      name={p.fullName}
+                      photoUrl={p.profileImageUrl}
+                      size={36}
+                    />
                     <div className="flex-1 min-w-0">
-                      <div className="font-mono text-sm font-bold leading-none truncate" style={{ color: "#c8d6e5" }}>
+                      <div className="font-mono text-sm font-bold leading-none truncate" style={{ color: callsignColor }}>
                         {p.callsign}
                       </div>
+                      <div className="font-mono text-[10px] mt-0.5 truncate" style={{ color: "#5a7a9a" }}>
+                        {p.fullName}
+                      </div>
                       <span
-                        className="text-[9px] font-mono tracking-[1px] uppercase mt-0.5 inline-block px-1.5 py-0.5 rounded"
-                        style={{
-                          background: rankStyle.bg,
-                          color: rankStyle.color,
-                          border: `1px solid ${rankStyle.border}`,
-                        }}
+                        className="text-[9px] font-mono tracking-[1px] uppercase mt-1 inline-block px-1.5 py-0.5 rounded"
+                        style={{ background: rankStyle.bg, color: rankStyle.color, border: `1px solid ${rankStyle.border}` }}
                       >
                         {p.rankName}
                       </span>
