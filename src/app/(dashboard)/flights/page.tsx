@@ -1,114 +1,445 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { FlightLog } from "@/types";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
 
-const statusColors: Record<string, string> = {
-  APPROVED: "text-green-400 border-green-400/30 bg-green-400/10",
-  REJECTED: "text-destructive border-destructive/30 bg-destructive/10",
-  PENDING: "text-primary border-primary/30 bg-primary/10",
+// ── Enums ─────────────────────────────────────────────────────────────────
+
+const FLIGHT_TYPE_OPTIONS = [
+  { value: "PATROL",            label: "Patrulha Aérea",       bg: "#0a1f2a", color: "#4a90e2" },
+  { value: "PURSUIT_10_94",     label: "Perseguição [10-94]",  bg: "#2a1010", color: "#e24b4a" },
+  { value: "BANK_FLEECA_10_90", label: "Banco Fleeca [10-90]", bg: "#2a1f0a", color: "#e8c97e" },
+  { value: "PALETO_BANK",       label: "Banco Paleto",          bg: "#2a1f0a", color: "#e8c97e" },
+  { value: "BANK_68_10_90",     label: "Banco 68 [10-90]",     bg: "#2a1f0a", color: "#e8c97e" },
+  { value: "BOOSTING_S",        label: "Apreensão Veicular",   bg: "#0a2a14", color: "#3dd68c" },
+] as const;
+
+const AIRCRAFT_OPTIONS = [
+  { value: "MAVERICK_1",  label: "Maverick N-1" },
+  { value: "MAVERICK_2",  label: "Maverick N-2" },
+  { value: "LITTLE_BIRD", label: "Little Bird"  },
+] as const;
+
+const FLIGHT_TYPE_MAP: Record<string, { label: string; bg: string; color: string }> = {
+  PATROL:            { label: "Patrulha",       bg: "#0a1f2a", color: "#4a90e2" },
+  PURSUIT_10_94:     { label: "Perseguição",    bg: "#2a1010", color: "#e24b4a" },
+  BANK_FLEECA_10_90: { label: "Banco Fleeca",   bg: "#2a1f0a", color: "#e8c97e" },
+  PALETO_BANK:       { label: "Banco Paleto",   bg: "#2a1f0a", color: "#e8c97e" },
+  BANK_68_10_90:     { label: "Banco 68",       bg: "#2a1f0a", color: "#e8c97e" },
+  BOOSTING_S:        { label: "Apreensão",      bg: "#0a2a14", color: "#3dd68c" },
 };
 
-const statusLabel: Record<string, string> = {
-  APPROVED: "Aprovado",
-  REJECTED: "Rejeitado",
-  PENDING: "Pendente",
+const AIRCRAFT_LABEL: Record<string, string> = {
+  MAVERICK_1:  "Maverick N-1",
+  MAVERICK_2:  "Maverick N-2",
+  LITTLE_BIRD: "Little Bird",
 };
 
-function formatDuration(minutes: number | null) {
-  if (!minutes) return "—";
-  return `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+const STATUS_MAP: Record<string, { label: string; bg: string; color: string; border: string }> = {
+  APPROVED: { label: "Aprovado",  bg: "#0a2a14", color: "#3dd68c", border: "#3dd68c44" },
+  REJECTED: { label: "Rejeitado", bg: "#2a0a0a", color: "#e24b4a", border: "#e24b4a44" },
+  PENDING:  { label: "Pendente",  bg: "#2a1f0a", color: "#e8c97e", border: "#e8c97e44" },
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+
+function calcDurationMins(start: string, end: string): number {
+  const s = new Date(start);
+  const e = new Date(end);
+  return Math.round((e.getTime() - s.getTime()) / 60000);
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+function formatMins(mins: number | null): string {
+  if (!mins || mins <= 0) return "—";
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  return h > 0 ? `${h}h${String(m).padStart(2, "0")}` : `${m}min`;
 }
+
+function formatTime(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const time = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  if (d.toDateString() === now.toDateString()) return `hoje ${time}`;
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (d.toDateString() === yesterday.toDateString()) return `ontem ${time}`;
+  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + ` ${time}`;
+}
+
+// ── Sub-components ────────────────────────────────────────────────────────
+
+function TypeBadge({ type }: { type: string }) {
+  const cfg = FLIGHT_TYPE_MAP[type] ?? { label: type, bg: "#1c2a3a", color: "#5a7a9a" };
+  return (
+    <span
+      className="text-[10px] font-mono tracking-[1px] uppercase px-2 py-0.5 rounded whitespace-nowrap"
+      style={{ background: cfg.bg, color: cfg.color }}
+    >
+      {cfg.label}
+    </span>
+  );
+}
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg = STATUS_MAP[status] ?? { label: status, bg: "#1c2a3a", color: "#5a7a9a", border: "#5a7a9a44" };
+  return (
+    <span
+      className="text-[9px] font-mono tracking-[1px] uppercase px-2 py-1 rounded whitespace-nowrap"
+      style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
+    >
+      {cfg.label}
+    </span>
+  );
+}
+
+// ── Input helpers ─────────────────────────────────────────────────────────
+
+const inputBase: React.CSSProperties = {
+  background: "#0a0d12",
+  border: "1px solid #1c2a3a",
+  borderRadius: "6px",
+  padding: "8px 10px",
+  color: "#c8d6e5",
+  fontFamily: "monospace",
+  fontSize: "13px",
+  width: "100%",
+  outline: "none",
+};
+
+function Label({ children }: { children: React.ReactNode }) {
+  return (
+    <label
+      className="block text-[10px] font-mono tracking-[1.5px] uppercase mb-1"
+      style={{ color: "#5a7a9a" }}
+    >
+      {children}
+    </label>
+  );
+}
+
+function borderGold(e: React.FocusEvent<HTMLElement>) {
+  e.currentTarget.style.borderColor = "#e8c97e";
+}
+function borderReset(e: React.FocusEvent<HTMLElement>) {
+  e.currentTarget.style.borderColor = "#1c2a3a";
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────
 
 export default function FlightsPage() {
-  const [flights, setFlights] = useState<FlightLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const [flights, setFlights]       = useState<FlightLog[]>([]);
+  const [loading, setLoading]       = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess]       = useState(false);
+  const [error, setError]           = useState<string | null>(null);
+
+  const today   = new Date().toISOString().split("T")[0];
+  const timeNow = new Date().toTimeString().slice(0, 5);
+
+  const [flightType, setFlightType] = useState(FLIGHT_TYPE_OPTIONS[0].value);
+  const [aircraft, setAircraft]     = useState(AIRCRAFT_OPTIONS[0].value);
+  const [date, setDate]             = useState(today);
+  const [startTime, setStartTime]   = useState(timeNow);
+  const [endTime, setEndTime]       = useState("");
+  const [notes, setNotes]           = useState("");
 
   useEffect(() => {
-    api
-      .get<FlightLog[]>("/flights")
-      .then(setFlights)
+    api.get<FlightLog[]>("/flights")
+      .then((data) => setFlights(data.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())))
       .finally(() => setLoading(false));
   }, []);
 
+  const selectedType = FLIGHT_TYPE_OPTIONS.find((o) => o.value === flightType)!;
+
+  const previewDuration =
+    date && startTime && endTime
+      ? formatMins(calcDurationMins(`${date}T${startTime}`, `${date}T${endTime}`))
+      : "—";
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!date || !startTime || !endTime) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const created = await api.post<FlightLog>("/flights", {
+        pilotEmail: user!.email,
+        aircraft,
+        flightType,
+        startedAt: `${date}T${startTime}:00`,
+        endAt:     `${date}T${endTime}:00`,
+        notes:     notes.trim() || null,
+      });
+      setFlights((prev) => [created, ...prev]);
+      setSuccess(true);
+      setNotes("");
+      setEndTime("");
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erro ao registrar protocolo";
+      setError(msg);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const recentFlights = flights.slice(0, 5);
+
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Protocolos de Voo</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {flights.length} registros
-        </p>
+    <div className="p-3 md:p-6 space-y-4 min-h-full" style={{ background: "#0a0d12" }}>
+
+      {/* Page header */}
+      <div className="flex items-start md:items-center justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-mono tracking-[3px] uppercase mb-1" style={{ color: "#5a7a9a" }}>
+            Air Support Division · Operações
+          </p>
+          <h1 className="text-lg md:text-2xl font-mono font-bold tracking-wide md:tracking-widest uppercase" style={{ color: "#e8c97e" }}>
+            Protocolos de Voo
+          </h1>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#3dd68c" }} />
+          <span className="text-[10px] font-mono tracking-[2px] uppercase" style={{ color: "#3dd68c" }}>
+            {loading ? "—" : `${flights.length} reg.`}
+          </span>
+        </div>
       </div>
 
-      <div className="rounded-lg border border-border overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="bg-muted/10 hover:bg-muted/10 border-border">
-              <TableHead className="text-muted-foreground">Piloto</TableHead>
-              <TableHead className="text-muted-foreground">Aeronave</TableHead>
-              <TableHead className="text-muted-foreground">Tipo</TableHead>
-              <TableHead className="text-muted-foreground">Início</TableHead>
-              <TableHead className="text-muted-foreground">Duração</TableHead>
-              <TableHead className="text-muted-foreground">Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  Carregando...
-                </TableCell>
-              </TableRow>
-            ) : flights.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                  Nenhum voo registrado.
-                </TableCell>
-              </TableRow>
-            ) : (
-              flights.map((flight) => (
-                <TableRow key={flight.id} className="border-border hover:bg-muted/5">
-                  <TableCell className="font-mono font-semibold text-primary">
-                    {flight.pilotCallsign}
-                  </TableCell>
-                  <TableCell className="text-foreground">{flight.aircraft}</TableCell>
-                  <TableCell className="text-foreground">{flight.flightType}</TableCell>
-                  <TableCell className="text-muted-foreground text-sm">
-                    {formatDate(flight.startedAt)}
-                  </TableCell>
-                  <TableCell className="text-foreground">
-                    {formatDuration(flight.durationMinutes)}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className={statusColors[flight.flightStatus]}>
-                      {statusLabel[flight.flightStatus] ?? flight.flightStatus}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))
+      {/* Split layout */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        {/* LEFT — Form */}
+        <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+          <div className="px-4 py-2.5" style={{ borderBottom: "1px solid #1c2a3a" }}>
+            <span className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
+              Novo Protocolo de Voo
+            </span>
+          </div>
+
+          <form onSubmit={handleSubmit} className="p-4 space-y-4">
+
+            {/* Tipo + Aeronave */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Tipo de Missão</Label>
+                <select
+                  value={flightType}
+                  onChange={(e) => setFlightType(e.target.value)}
+                  style={inputBase}
+                  onFocus={borderGold}
+                  onBlur={borderReset}
+                >
+                  {FLIGHT_TYPE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <Label>Aeronave</Label>
+                <select
+                  value={aircraft}
+                  onChange={(e) => setAircraft(e.target.value)}
+                  style={inputBase}
+                  onFocus={borderGold}
+                  onBlur={borderReset}
+                >
+                  {AIRCRAFT_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Data */}
+            <div>
+              <Label>Data</Label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                style={inputBase}
+                onFocus={borderGold}
+                onBlur={borderReset}
+              />
+            </div>
+
+            {/* Início + Término */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Início</Label>
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  required
+                  style={inputBase}
+                  onFocus={borderGold}
+                  onBlur={borderReset}
+                />
+              </div>
+              <div>
+                <Label>Término</Label>
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  required
+                  style={inputBase}
+                  onFocus={borderGold}
+                  onBlur={borderReset}
+                />
+              </div>
+            </div>
+
+            {/* Observações */}
+            <div>
+              <Label>Observações</Label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                placeholder="Resultado da missão, ocorrências..."
+                style={{ ...inputBase, resize: "none" }}
+                onFocus={borderGold}
+                onBlur={borderReset}
+              />
+            </div>
+
+            {error && (
+              <p className="text-[11px] font-mono" style={{ color: "#e24b4a" }}>{error}</p>
             )}
-          </TableBody>
-        </Table>
+
+            <div className="flex justify-end">
+              <button
+                type="submit"
+                disabled={submitting}
+                className="font-mono text-[12px] tracking-[1px] uppercase px-5 py-2 rounded font-semibold transition-all"
+                style={{
+                  background: success ? "#0a2a14" : "#e8c97e",
+                  color:      success ? "#3dd68c" : "#0a0d12",
+                  border:     success ? "1px solid #3dd68c44" : "1px solid transparent",
+                  opacity:    submitting ? 0.6 : 1,
+                  cursor:     submitting ? "not-allowed" : "pointer",
+                }}
+              >
+                {success ? "✓ Registrado" : submitting ? "Enviando..." : "Registrar Protocolo"}
+              </button>
+            </div>
+
+          </form>
+        </div>
+
+        {/* RIGHT — Preview + Logs recentes */}
+        <div className="space-y-4">
+
+          {/* Live preview */}
+          <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+            <div className="px-4 py-2.5" style={{ borderBottom: "1px solid #1c2a3a" }}>
+              <span className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
+                Preview do Protocolo
+              </span>
+            </div>
+            <div className="px-4 py-4 space-y-3">
+
+              {/* Piloto */}
+              <div>
+                <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>
+                  {user?.name ?? "—"}
+                </div>
+                <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>
+                  {user?.email ?? "—"}
+                </div>
+              </div>
+
+              {/* Tipo + Aeronave + Duração */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <span
+                  className="text-[10px] font-mono tracking-[1px] uppercase px-2 py-0.5 rounded"
+                  style={{ background: selectedType.bg, color: selectedType.color }}
+                >
+                  {selectedType.label}
+                </span>
+                <span className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>
+                  {AIRCRAFT_LABEL[aircraft]}
+                </span>
+                <span className="font-mono text-base font-bold" style={{ color: "#e8c97e" }}>
+                  {previewDuration}
+                </span>
+              </div>
+
+              {/* Data / Início / Término */}
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  { lbl: "Data",    val: date ? new Date(date + "T12:00").toLocaleDateString("pt-BR") : "—" },
+                  { lbl: "Início",  val: startTime || "—" },
+                  { lbl: "Término", val: endTime   || "—" },
+                ].map(({ lbl, val }) => (
+                  <div key={lbl}>
+                    <div className="text-[9px] font-mono tracking-[1px] uppercase" style={{ color: "#3a5a7a" }}>{lbl}</div>
+                    <div className="font-mono text-sm" style={{ color: "#c8d6e5" }}>{val}</div>
+                  </div>
+                ))}
+              </div>
+
+              {notes && (
+                <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>
+                  <span style={{ color: "#3a5a7a" }}>Obs: </span>
+                  <span style={{ color: "#c8d6e5" }}>{notes}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Logs recentes */}
+          <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+            <div className="px-4 py-2.5" style={{ borderBottom: "1px solid #1c2a3a" }}>
+              <span className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
+                Logs Recentes
+              </span>
+            </div>
+            <div className="px-4 py-1">
+              {loading ? (
+                <p className="py-8 text-center text-[11px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
+                  Carregando...
+                </p>
+              ) : recentFlights.length === 0 ? (
+                <p className="py-8 text-center text-[11px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
+                  Nenhum voo registrado
+                </p>
+              ) : (
+                recentFlights.map((f) => {
+                  const mins = f.endAt ? calcDurationMins(f.startedAt, f.endAt) : null;
+                  return (
+                    <div
+                      key={f.id}
+                      className="flex items-center gap-3 py-2.5"
+                      style={{ borderBottom: "1px solid #111823" }}
+                    >
+                      <div className="font-mono text-[11px] min-w-[70px] shrink-0" style={{ color: "#5a7a9a" }}>
+                        {formatTime(f.startedAt)}
+                      </div>
+                      <div className="flex-1 font-mono text-sm truncate" style={{ color: "#c8d6e5" }}>
+                        {f.pilotCallsign}
+                      </div>
+                      <TypeBadge type={f.flightType} />
+                      <div className="font-mono text-sm font-bold shrink-0" style={{ color: "#e8c97e" }}>
+                        {formatMins(mins)}
+                      </div>
+                      <StatusBadge status={f.flightStatus} />
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   );

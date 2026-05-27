@@ -32,13 +32,12 @@ export interface FlightLog {
   pilotCallsign: string;
   aircraft: string;
   flightType: string;
-  startedAt: string;
-  endedAt: string | null;
-  durationMinutes: number | null;
-  notes: string | null;
   flightStatus: FlightStatus;
+  startedAt: string;
+  endAt: string | null;
   approvedBy: string | null;
   createdAt: string;
+  notes: string | null;
 }
 
 export interface PerformanceReport {
