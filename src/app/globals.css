@@ -1,26 +1,95 @@
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ASD — Air Support Division — Dark Theme (único tema, sempre escuro) */
+:root {
+  --background: oklch(0.09 0.03 258);        /* #080D1A — preto-azulado */
+  --foreground: oklch(0.93 0.01 256);         /* #E8ECF4 — quase branco */
+
+  --card: oklch(0.13 0.04 256);               /* #0D1627 — card navy escuro */
+  --card-foreground: oklch(0.93 0.01 256);
+
+  --popover: oklch(0.13 0.04 256);
+  --popover-foreground: oklch(0.93 0.01 256);
+
+  --primary: oklch(0.72 0.12 82);             /* #C9A84C — dourado */
+  --primary-foreground: oklch(0.09 0.03 258);
+
+  --secondary: oklch(0.18 0.05 252);          /* #112240 — azul marinho médio */
+  --secondary-foreground: oklch(0.93 0.01 256);
+
+  --muted: oklch(0.18 0.05 252);
+  --muted-foreground: oklch(0.60 0.03 255);   /* #7A8BAA — texto apagado */
+
+  --accent: oklch(0.18 0.05 252);
+  --accent-foreground: oklch(0.72 0.12 82);   /* dourado sobre navy */
+
+  --destructive: oklch(0.60 0.20 25);
+
+  --border: oklch(0.21 0.05 253);             /* #1A2A40 — borda discreta */
+  --input: oklch(0.21 0.05 253);
+  --ring: oklch(0.72 0.12 82);                /* foco dourado */
+
+  --radius: 0.5rem;
+
+  /* sidebar */
+  --sidebar: oklch(0.11 0.04 255);            /* #0A1628 — navy mais escuro */
+  --sidebar-foreground: oklch(0.93 0.01 256);
+  --sidebar-primary: oklch(0.72 0.12 82);
+  --sidebar-primary-foreground: oklch(0.09 0.03 258);
+  --sidebar-accent: oklch(0.18 0.05 252);
+  --sidebar-accent-foreground: oklch(0.93 0.01 256);
+  --sidebar-border: oklch(0.18 0.05 253);
+  --sidebar-ring: oklch(0.72 0.12 82);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
 }
