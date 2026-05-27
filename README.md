@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Air Ops System — ASD Frontend
 
-## Getting Started
+Interface web de gestão interna da **Air Support Division (ASD)**, unidade aérea do LSPD em servidor FiveM GTA RP.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Stack
+
+- Next.js 15 (App Router) + TypeScript
+- Tailwind CSS v4
+- Lucide React (ícones)
+
+---
+
+## Módulos
+
+| Rota | Descrição | Acesso |
+|------|-----------|--------|
+| `/login` | Autenticação JWT | Público |
+| `/dashboard` | Visão geral: atividade recente e top pilotos | Todos |
+| `/pilots` | Roster completo da unidade | Todos |
+| `/pilots/[id]` | Perfil: histórico de voos, score, rank, edição | Todos / LEAD+SUPERVISOR p/ editar |
+| `/flights` | Protocolo de voo: registro e histórico com filtros | Todos |
+| `/reports` | Relatórios de desempenho e score bar | Todos |
+| `/documents` | Biblioteca: SOPs, manuais, protocolos | Todos |
+| `/register` | Cadastro de novo membro | LEAD, SUPERVISOR |
+
+---
+
+## Variáveis de Ambiente
+
+Crie `.env.local` na raiz (use `.env.example` como base):
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Rodar Localmente
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npm run dev
+```
 
-## Learn More
+Acesse [http://localhost:3000](http://localhost:3000).  
+O backend precisa estar rodando em `http://localhost:8080`.
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Build de Produção
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run build
+npm start
+```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploy — Vercel
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Conecte o repositório no [Vercel](https://vercel.com)
+2. Configure a variável de ambiente:
+
+| Variável | Valor |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | URL do backend no Render (ex: `https://asd-api.onrender.com`) |
+
+3. Deploy automático a cada push na branch `main`
+
+> O Vercel detecta Next.js automaticamente — nenhuma configuração adicional necessária.
