@@ -8,7 +8,7 @@ import { FlightLog } from "@/types";
 // ── Enums ─────────────────────────────────────────────────────────────────
 
 const FLIGHT_TYPE_OPTIONS = [
-  { value: "PATROL",            label: "Patrulha Aérea",       bg: "#0a1f2a", color: "#4a90e2" },
+  { value: "PATROL",            label: "Perseguição 10-80",    bg: "#0a1f2a", color: "#4a90e2" },
   { value: "PURSUIT_10_94",     label: "Perseguição [10-94]",  bg: "#2a1010", color: "#e24b4a" },
   { value: "BANK_FLEECA_10_90", label: "Banco Fleeca [10-90]", bg: "#2a1f0a", color: "#e8c97e" },
   { value: "PALETO_BANK",       label: "Banco Paleto",          bg: "#2a1f0a", color: "#e8c97e" },
@@ -23,7 +23,7 @@ const AIRCRAFT_OPTIONS = [
 ] as const;
 
 const FLIGHT_TYPE_MAP: Record<string, { label: string; bg: string; color: string }> = {
-  PATROL:            { label: "Patrulha",       bg: "#0a1f2a", color: "#4a90e2" },
+  PATROL:            { label: "Pers. 10-80",    bg: "#0a1f2a", color: "#4a90e2" },
   PURSUIT_10_94:     { label: "Perseguição",    bg: "#2a1010", color: "#e24b4a" },
   BANK_FLEECA_10_90: { label: "Banco Fleeca",   bg: "#2a1f0a", color: "#e8c97e" },
   PALETO_BANK:       { label: "Banco Paleto",   bg: "#2a1f0a", color: "#e8c97e" },
@@ -152,7 +152,7 @@ function EditFlightModal({
   const [error,      setError]      = useState<string | null>(null);
 
   async function handleSave() {
-    if (!date || !startTime || !endTime) return;
+    if (!date || !startTime) return;
     setSaving(true);
     setError(null);
     try {
@@ -160,7 +160,7 @@ function EditFlightModal({
         aircraft,
         flightType,
         startedAt: `${date}T${startTime}:00`,
-        endAt:     `${date}T${endTime}:00`,
+        endAt:     endTime ? `${date}T${endTime}:00` : null,
         notes:     notes.trim() || null,
       });
       onSaved(updated);
@@ -304,7 +304,7 @@ function EditFlightModal({
             </button>
             <button
               onClick={handleSave}
-              disabled={saving || !date || !startTime || !endTime}
+              disabled={saving || !date || !startTime}
               className="font-mono text-[12px] tracking-[1px] uppercase px-5 py-2 rounded font-semibold"
               style={{
                 background: "#e8c97e",
@@ -375,7 +375,7 @@ export default function FlightsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!date || !startTime || !endTime) return;
+    if (!date || !startTime) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -384,7 +384,7 @@ export default function FlightsPage() {
         aircraft,
         flightType,
         startedAt: `${date}T${startTime}:00`,
-        endAt:     `${date}T${endTime}:00`,
+        endAt:     endTime ? `${date}T${endTime}:00` : null,
         notes:     notes.trim() || null,
       });
       setFlights((prev) => [created, ...prev]);
@@ -522,12 +522,11 @@ export default function FlightsPage() {
                 />
               </div>
               <div>
-                <Label>Término</Label>
+                <Label>Término (opcional)</Label>
                 <input
                   type="time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  required
                   style={inputBase}
                   onFocus={borderGold}
                   onBlur={borderReset}
@@ -542,7 +541,7 @@ export default function FlightsPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                placeholder="Resultado da missão, ocorrências..."
+                placeholder="Incidente, demais ocorrências, número 95, etc..."
                 style={{ ...inputBase, resize: "none" }}
                 onFocus={borderGold}
                 onBlur={borderReset}

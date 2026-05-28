@@ -29,16 +29,31 @@ const SCORE_TIERS = [
 // ── Sub-components ────────────────────────────────────────────────────────
 
 function ScoreBar({ pilotRank, pilotAccumulatedScore }: { pilotRank: string; pilotAccumulatedScore: number }) {
-  const color   = RANK_COLOR[pilotRank] ?? "#5a7a9a";
-  const isHigh  = HIGH_RANKS.has(pilotRank) || pilotRank === "PILOT_SENIOR";
-  const tier    = SCORE_TIERS.find((t) => t.rank === pilotRank) ?? SCORE_TIERS[SCORE_TIERS.length - 1];
-  const pct     = isHigh ? 100 : Math.min(Math.max(((pilotAccumulatedScore - tier.min) / (tier.max - tier.min)) * 100, 0), 100);
-  const label   = isHigh ? pilotRank : tier.label;
+  const color  = RANK_COLOR[pilotRank] ?? "#5a7a9a";
+  const isHigh = HIGH_RANKS.has(pilotRank);
+
+  if (isHigh) {
+    return (
+      <div className="flex items-center gap-2">
+        <span
+          className="text-[9px] font-mono tracking-[1.5px] uppercase px-2 py-0.5 rounded"
+          style={{ background: color + "22", color, border: `1px solid ${color}44` }}
+        >
+          {pilotRank}
+        </span>
+        <span className="text-[9px] font-mono" style={{ color: "#3a5a7a" }}>Score N/A</span>
+      </div>
+    );
+  }
+
+  const tier  = SCORE_TIERS.find((t) => t.rank === pilotRank) ?? SCORE_TIERS[SCORE_TIERS.length - 1];
+  const pct   = Math.min(Math.max(((pilotAccumulatedScore - tier.min) / (tier.max - tier.min)) * 100, 0), 100);
+
   return (
     <div className="space-y-1 w-full">
       <div className="flex items-center justify-between gap-2">
         <span className="text-[9px] font-mono tracking-[1.5px] uppercase" style={{ color }}>
-          {label}
+          {tier.label}
         </span>
         <span className="text-[10px] font-mono" style={{ color }}>
           {pilotAccumulatedScore} pts
