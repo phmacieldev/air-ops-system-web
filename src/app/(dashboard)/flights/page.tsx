@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { FlightLog } from "@/types";
@@ -8,12 +8,13 @@ import { FlightLog } from "@/types";
 // ── Enums ─────────────────────────────────────────────────────────────────
 
 const FLIGHT_TYPE_OPTIONS = [
+  { value: "PATRULHA",          label: "Patrulha",             bg: "#1a1c2a", color: "#8a9ab8" },
   { value: "PATROL",            label: "Perseguição 10-80",    bg: "#0a1f2a", color: "#4a90e2" },
   { value: "PURSUIT_10_94",     label: "Perseguição [10-94]",  bg: "#2a1010", color: "#e24b4a" },
   { value: "BANK_FLEECA_10_90", label: "Banco Fleeca [10-90]", bg: "#2a1f0a", color: "#e8c97e" },
   { value: "PALETO_BANK",       label: "Banco Paleto",          bg: "#2a1f0a", color: "#e8c97e" },
   { value: "BANK_68_10_90",     label: "Banco 68 [10-90]",     bg: "#2a1f0a", color: "#e8c97e" },
-  { value: "BOOSTING_S",        label: "Apreensão Veicular",   bg: "#0a2a14", color: "#3dd68c" },
+  { value: "BOOSTING_S",        label: "Boosting-S 10-80",     bg: "#0a2a14", color: "#3dd68c" },
 ] as const;
 
 const AIRCRAFT_OPTIONS = [
@@ -23,12 +24,13 @@ const AIRCRAFT_OPTIONS = [
 ] as const;
 
 const FLIGHT_TYPE_MAP: Record<string, { label: string; bg: string; color: string }> = {
+  PATRULHA:          { label: "Patrulha",       bg: "#1a1c2a", color: "#8a9ab8" },
   PATROL:            { label: "Pers. 10-80",    bg: "#0a1f2a", color: "#4a90e2" },
   PURSUIT_10_94:     { label: "Perseguição",    bg: "#2a1010", color: "#e24b4a" },
   BANK_FLEECA_10_90: { label: "Banco Fleeca",   bg: "#2a1f0a", color: "#e8c97e" },
   PALETO_BANK:       { label: "Banco Paleto",   bg: "#2a1f0a", color: "#e8c97e" },
   BANK_68_10_90:     { label: "Banco 68",       bg: "#2a1f0a", color: "#e8c97e" },
-  BOOSTING_S:        { label: "Apreensão",      bg: "#0a2a14", color: "#3dd68c" },
+  BOOSTING_S:        { label: "Boost. 10-80",   bg: "#0a2a14", color: "#3dd68c" },
 };
 
 const AIRCRAFT_LABEL: Record<string, string> = {
@@ -541,7 +543,7 @@ export default function FlightsPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                placeholder="Incidente, demais ocorrências, número 95, etc..."
+                placeholder="Incidente, ocorrências, número de 10-95, etc..."
                 style={{ ...inputBase, resize: "none" }}
                 onFocus={borderGold}
                 onBlur={borderReset}
@@ -655,20 +657,23 @@ export default function FlightsPage() {
                   return (
                     <div
                       key={f.id}
-                      className="flex items-center gap-3 py-2.5"
-                      style={{ borderBottom: "1px solid #111823" }}
+                      className="grid items-center gap-3 py-2.5"
+                      style={{ gridTemplateColumns: "68px 1fr 1.2fr auto auto auto", borderBottom: "1px solid #111823" }}
                     >
-                      <div className="font-mono text-[11px] min-w-[70px] shrink-0" style={{ color: "#5a7a9a" }}>
+                      <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>
                         {formatTime(f.startedAt)}
                       </div>
-                      <div className="flex-1 font-mono text-sm truncate" style={{ color: "#c8d6e5" }}>
+                      <div className="font-mono text-sm font-bold truncate" style={{ color: "#c8d6e5" }}>
                         {f.pilotCallsign}
                       </div>
-                      <TypeBadge type={f.flightType} />
-                      <div className="font-mono text-sm font-bold shrink-0" style={{ color: "#e8c97e" }}>
+                      <div className="font-mono text-[10px] truncate" style={{ color: "#5a7a9a" }}>
+                        {f.pilotName}
+                      </div>
+                      <div><TypeBadge type={f.flightType} /></div>
+                      <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>
                         {formatMins(mins)}
                       </div>
-                      <StatusBadge status={f.flightStatus} />
+                      <div><StatusBadge status={f.flightStatus} /></div>
                     </div>
                   );
                 })
@@ -740,8 +745,8 @@ export default function FlightsPage() {
         ) : (
           <div>
             <div className="hidden md:grid gap-x-3 px-4 py-1.5 text-[9px] font-mono tracking-[1.5px] uppercase"
-              style={{ gridTemplateColumns: "1.4fr 1.2fr 0.9fr 0.7fr 0.7fr 0.8fr", borderBottom: "1px solid #1c2a3a", color: "#5a7a9a" }}>
-              {["Piloto", "Tipo", "Aeronave", "Início", "Duração", "Status"].map(h => <div key={h}>{h}</div>)}
+              style={{ gridTemplateColumns: "1fr 1.2fr 1fr 0.9fr 0.7fr 0.7fr 0.8fr", borderBottom: "1px solid #1c2a3a", color: "#5a7a9a" }}>
+              {["Callsign", "Nome", "Tipo", "Aeronave", "Início", "Duração", "Status"].map(h => <div key={h}>{h}</div>)}
             </div>
             {filteredFlights.map((f) => {
               const mins = f.endAt ? calcDurationMins(f.startedAt, f.endAt) : null;
@@ -749,18 +754,16 @@ export default function FlightsPage() {
                 <div key={f.id}>
                   {/* Desktop row */}
                   <div className="hidden md:grid gap-x-3 px-4 py-2.5 items-center transition-colors"
-                    style={{ gridTemplateColumns: "1.4fr 1.2fr 0.9fr 0.7fr 0.7fr 0.8fr auto", borderBottom: "1px solid #111823" }}
+                    style={{ gridTemplateColumns: "1fr 1.2fr 1fr 0.9fr 0.7fr 0.7fr 0.8fr auto", borderBottom: "1px solid #111823" }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-                    <div>
-                      <div className="font-mono text-sm font-bold leading-none" style={{ color: "#c8d6e5" }}>{f.pilotCallsign}</div>
-                      <div className="font-mono text-[10px] mt-0.5" style={{ color: "#5a7a9a" }}>{f.pilotName}</div>
-                    </div>
-                    <TypeBadge type={f.flightType} />
+                    <div className="font-mono text-sm font-bold leading-none truncate" style={{ color: "#c8d6e5" }}>{f.pilotCallsign}</div>
+                    <div className="font-mono text-[10px] truncate" style={{ color: "#5a7a9a" }}>{f.pilotName}</div>
+                    <div><TypeBadge type={f.flightType} /></div>
                     <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{AIRCRAFT_LABEL[f.aircraft] ?? f.aircraft}</div>
                     <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{formatTime(f.startedAt)}</div>
                     <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>{formatMins(mins)}</div>
-                    <StatusBadge status={f.flightStatus} />
+                    <div><StatusBadge status={f.flightStatus} /></div>
                     {f.flightStatus === "PENDING" && (
                       <button
                         onClick={() => setEditingFlight(f)}

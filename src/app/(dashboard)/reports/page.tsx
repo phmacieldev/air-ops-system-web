@@ -224,21 +224,25 @@ function EditReportModal({
           <div className="flex gap-2 justify-end">
             <button
               onClick={onClose}
-              className="font-mono text-[12px] tracking-[1px] uppercase px-4 py-2 rounded"
+              className="font-mono text-[12px] tracking-[1px] uppercase px-4 py-2 rounded transition-colors"
               style={{ background: "#1c2a3a", color: "#5a7a9a" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#263a4f")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#1c2a3a")}
             >
               Cancelar
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="font-mono text-[12px] tracking-[1px] uppercase px-5 py-2 rounded font-semibold"
+              className="font-mono text-[12px] tracking-[1px] uppercase px-5 py-2 rounded font-semibold transition-colors"
               style={{
                 background: "#e8c97e",
                 color: "#0a0d12",
                 opacity: saving ? 0.6 : 1,
                 cursor: saving ? "not-allowed" : "pointer",
               }}
+              onMouseEnter={(e) => { if (!saving) e.currentTarget.style.background = "#f0d898"; }}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#e8c97e")}
             >
               {saving ? "Salvando..." : "Salvar"}
             </button>
@@ -299,9 +303,9 @@ function ReportCard({
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-2">
         {[
-          { label: "Apreensões",   value: report.seizures,   color: "#c8d6e5" },
+          { label: "Apreensões",   value: report.seizures,   color: "#3dd68c" },
           { label: "Perseguições", value: report.chases,     color: "#4a90e2" },
-          { label: "Operações",    value: report.operations, color: "#3dd68c" },
+          { label: "Operações",    value: report.operations, color: "#c8d6e5" },
           { label: "Acidentes",    value: report.accidents,  color: "#e24b4a" },
         ].map(({ label, value, color }) => (
           <div key={label} className="flex items-center gap-2">
@@ -331,16 +335,12 @@ function ReportRow({
 }) {
   const rankColor = RANK_COLOR[report.pilotRank] ?? "#5a7a9a";
   const busy = approving === report.id;
-  const hasActions = report.status === "PENDING";
+  const isPending = report.status === "PENDING";
+  const COLS = "1.2fr 0.55fr 0.65fr 0.55fr 0.55fr 1.8fr 200px";
   return (
     <div
       className="grid gap-x-4 px-4 py-3 items-center transition-colors cursor-default"
-      style={{
-        gridTemplateColumns: hasActions
-          ? "1.2fr 0.55fr 0.65fr 0.55fr 0.55fr 1.8fr 0.75fr auto"
-          : "1.4fr 0.55fr 0.65fr 0.55fr 0.55fr 1.8fr 0.85fr",
-        borderBottom: "1px solid #111823",
-      }}
+      style={{ gridTemplateColumns: COLS, borderBottom: "1px solid #111823" }}
       onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
     >
@@ -352,35 +352,41 @@ function ReportRow({
           {report.pilotName}
         </div>
       </div>
-      <div className="font-mono text-lg font-bold" style={{ color: "#c8d6e5" }}>{report.seizures}</div>
-      <div className="font-mono text-lg font-bold" style={{ color: "#4a90e2" }}>{report.chases}</div>
-      <div className="font-mono text-lg font-bold" style={{ color: "#3dd68c" }}>{report.operations}</div>
-      <div className="font-mono text-lg font-bold" style={{ color: "#e24b4a" }}>{report.accidents}</div>
+      <div className="font-mono text-lg font-bold text-center" style={{ color: "#3dd68c" }}>{report.seizures}</div>
+      <div className="font-mono text-lg font-bold text-center" style={{ color: "#4a90e2" }}>{report.chases}</div>
+      <div className="font-mono text-lg font-bold text-center" style={{ color: "#c8d6e5" }}>{report.operations}</div>
+      <div className="font-mono text-lg font-bold text-center" style={{ color: "#e24b4a" }}>{report.accidents}</div>
       <ScoreBar pilotRank={report.pilotRank} pilotAccumulatedScore={report.pilotAccumulatedScore} />
-      <div className="flex justify-start">
-        <StatusBadge status={report.status} />
-      </div>
-      {hasActions && (
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => onEdit(report)}
-            className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded"
-            style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e244", whiteSpace: "nowrap" }}
-          >
-            Editar
-          </button>
-          {canReview && (
-            <button
-              disabled={busy}
-              onClick={() => onApprove(report.id)}
-              className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-opacity"
-              style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1, whiteSpace: "nowrap" }}
-            >
-              {busy ? "..." : "Aprovar"}
-            </button>
-          )}
+      <div className="flex flex-col gap-1.5">
+        <div>
+          <StatusBadge status={report.status} />
         </div>
-      )}
+        {isPending && (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onEdit(report)}
+              className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-colors"
+              style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e244", whiteSpace: "nowrap" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#112d42")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#0a1f2a")}
+            >
+              Editar
+            </button>
+            {canReview && (
+              <button
+                disabled={busy}
+                onClick={() => onApprove(report.id)}
+                className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-colors"
+                style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1, whiteSpace: "nowrap" }}
+                onMouseEnter={(e) => { if (!busy) e.currentTarget.style.background = "#0f3d1e"; }}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "#0a2a14")}
+              >
+                {busy ? "..." : "Aprovar"}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -689,9 +695,9 @@ export default function ReportsPage() {
         ) : (
           <>
             <div className="hidden md:block">
-              <div className="grid gap-x-4 px-4 py-2" style={{ gridTemplateColumns: "1.4fr 0.55fr 0.65fr 0.55fr 0.55fr 1.8fr 0.85fr", borderBottom: "1px solid #1c2a3a" }}>
-                {["Piloto", "Apreens.", "Perseg.", "Ops", "Acid.", "Score", "Status"].map((h) => (
-                  <div key={h} className="text-[9px] font-mono tracking-[1.5px] uppercase" style={{ color: "#5a7a9a" }}>{h}</div>
+              <div className="grid gap-x-4 px-4 py-2" style={{ gridTemplateColumns: "1.2fr 0.55fr 0.65fr 0.55fr 0.55fr 1.8fr 200px", borderBottom: "1px solid #1c2a3a" }}>
+                {["Piloto", "Apreens.", "Perseg.", "Ops", "Acid.", "Score", "Status"].map((h, i) => (
+                  <div key={h} className={`text-[9px] font-mono tracking-[1.5px] uppercase ${i >= 1 && i <= 4 ? "text-center" : ""}`} style={{ color: "#5a7a9a" }}>{h}</div>
                 ))}
               </div>
               {filteredReports.map((r) => (

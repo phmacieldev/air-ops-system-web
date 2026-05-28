@@ -3,7 +3,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { Pilot } from "@/types";
+import { Pilot, PerformanceReport } from "@/types";
+
+const RANK_ORDER: Record<string, number> = {
+  LEAD: 10, SUPERVISOR: 6, INSTRUCTOR: 5,
+  PILOT_SENIOR: 4, PILOT_PLENO: 3, PILOT_STANDARD: 2, TRAINEE: 1,
+};
 
 const RANK_STYLES: Record<string, { bg: string; color: string; border: string }> = {
   LEAD:           { bg: "#2a1f0a", color: "#e8c97e", border: "#e8c97e44" },
@@ -16,13 +21,8 @@ const RANK_STYLES: Record<string, { bg: string; color: string; border: string }>
 };
 
 const RANK_LABEL: Record<string, string> = {
-  LEAD:           "Lead",
-  SUPERVISOR:     "Supervisor",
-  INSTRUCTOR:     "Instrutor",
-  PILOT_SENIOR:   "Pilot Senior",
-  PILOT_PLENO:    "Pilot Pleno",
-  PILOT_STANDARD: "Pilot Standard",
-  TRAINEE:        "Trainee",
+  LEAD: "Lead", SUPERVISOR: "Supervisor", INSTRUCTOR: "Instrutor",
+  PILOT_SENIOR: "Senior", PILOT_PLENO: "Pleno", PILOT_STANDARD: "Standard", TRAINEE: "Trainee",
 };
 
 const STATUS_STYLES: Record<string, { label: string; color: string }> = {
@@ -32,155 +32,83 @@ const STATUS_STYLES: Record<string, { label: string; color: string }> = {
   TRAINING:  { label: "Treinamento", color: "#e8c97e" },
 };
 
-const AVATAR_BG: Record<string, string> = {
-  LEAD:           "#2a1f0a",
-  SUPERVISOR:     "#2a1f0a",
-  INSTRUCTOR:     "#2a1f0a",
-  PILOT_SENIOR:   "#0a1f2a",
-  PILOT_PLENO:    "#0a2a14",
-  PILOT_STANDARD: "#0a2a14",
-  TRAINEE:        "#1a1c2a",
-};
-
 function getRankStyle(rankName: string) {
   return RANK_STYLES[rankName.toUpperCase()] ?? RANK_STYLES.TRAINEE;
 }
 
 function getInitials(callsign: string) {
-  return callsign
-    .split(/[.\s_-]/)
-    .slice(0, 2)
-    .map((w) => w[0] ?? "")
-    .join("")
-    .toUpperCase()
-    .slice(0, 2);
+  return callsign.split(/[.\s_-]/).slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase().slice(0, 2);
 }
 
-function scoreColor(score: number) {
-  if (score >= 1000) return "#e8c97e";
-  if (score >= 600)  return "#4a90e2";
-  if (score >= 200)  return "#3dd68c";
-  return "#5a7a9a";
+function formatHours(minutes: number) {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  if (h === 0) return `${m}min`;
+  return m > 0 ? `${h}h${String(m).padStart(2, "0")}` : `${h}h`;
 }
 
-/* ─── Card de piloto ─── */
-function PilotCard({ pilot, onClick }: { pilot: Pilot; onClick: () => void }) {
-  const rankStyle = getRankStyle(pilot.rankName);
-  const statusCfg = STATUS_STYLES[pilot.status] ?? { label: pilot.status, color: "#5a7a9a" };
-  const avatarBg  = AVATAR_BG[pilot.rankName.toUpperCase()] ?? "#1a1c2a";
-
+function Avatar({ pilot, size = 32 }: { pilot: Pilot; size?: number }) {
+  const rs = getRankStyle(pilot.rankName);
+  if (pilot.profileImageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={pilot.profileImageUrl}
+        alt={pilot.callsign}
+        className="rounded-full object-cover shrink-0"
+        style={{ width: size, height: size }}
+      />
+    );
+  }
   return (
     <div
-      className="rounded-lg overflow-hidden cursor-pointer transition-all duration-200"
-      style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}
-      onClick={onClick}
-      onMouseEnter={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = rankStyle.color + "66";
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(-2px)";
-      }}
-      onMouseLeave={(e) => {
-        (e.currentTarget as HTMLDivElement).style.borderColor = "#1c2a3a";
-        (e.currentTarget as HTMLDivElement).style.transform = "translateY(0)";
-      }}
+      className="rounded-full flex items-center justify-center font-mono font-bold shrink-0"
+      style={{ width: size, height: size, background: rs.bg, color: rs.color, fontSize: size * 0.34, border: `1px solid ${rs.border}` }}
     >
-      {/* Top stripe — rank color */}
-      <div className="h-0.5 w-full" style={{ background: rankStyle.color }} />
-
-      <div className="p-4 flex flex-col items-center text-center gap-3">
-
-        {/* Avatar */}
-        <div
-          className="w-16 h-16 rounded-full flex items-center justify-center shrink-0 overflow-hidden"
-          style={{ background: avatarBg, border: `2px solid ${rankStyle.color}33` }}
-        >
-          {pilot.profileImageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={pilot.profileImageUrl}
-              alt={pilot.callsign}
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <span
-              className="text-xl font-mono font-bold"
-              style={{ color: rankStyle.color }}
-            >
-              {getInitials(pilot.callsign)}
-            </span>
-          )}
-        </div>
-
-        {/* Callsign */}
-        <div>
-          <div
-            className="font-mono text-base font-bold leading-tight tracking-wide truncate max-w-full"
-            style={{ color: rankStyle.color }}
-          >
-            {pilot.callsign}
-          </div>
-          <div className="font-mono text-[11px] mt-0.5 truncate max-w-full" style={{ color: "#5a7a9a" }}>
-            {pilot.fullName}
-          </div>
-        </div>
-
-        {/* Rank badge */}
-        <span
-          className="text-[9px] font-mono tracking-[1px] uppercase px-2.5 py-0.5 rounded"
-          style={{
-            background: rankStyle.bg,
-            color: rankStyle.color,
-            border: `1px solid ${rankStyle.border}`,
-          }}
-        >
-          {RANK_LABEL[pilot.rankName.toUpperCase()] ?? pilot.rankName}
-        </span>
-
-        {/* Divider */}
-        <div className="w-full h-px" style={{ background: "#1c2a3a" }} />
-
-        {/* Score + Status */}
-        <div className="w-full flex items-center justify-between">
-          <div>
-            <div
-              className="font-mono text-2xl font-bold leading-none"
-              style={{ color: scoreColor(pilot.accumulatedScore) }}
-            >
-              {pilot.accumulatedScore}
-            </div>
-            <div className="text-[9px] font-mono tracking-[1px] uppercase mt-0.5" style={{ color: "#3a5a7a" }}>
-              pts
-            </div>
-          </div>
-          <div className="font-mono text-[11px] font-bold" style={{ color: statusCfg.color }}>
-            ● {statusCfg.label}
-          </div>
-        </div>
-      </div>
+      {getInitials(pilot.callsign)}
     </div>
   );
 }
 
 export default function PilotsPage() {
   const router = useRouter();
-  const [pilots, setPilots] = useState<Pilot[]>([]);
+  const [pilots, setPilots]   = useState<Pilot[]>([]);
+  const [reports, setReports] = useState<PerformanceReport[]>([]);
   const [search, setSearch]   = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<Pilot[]>("/pilots").then(setPilots).finally(() => setLoading(false));
+    Promise.all([
+      api.get<Pilot[]>("/pilots"),
+      api.get<PerformanceReport[]>("/reports").catch(() => [] as PerformanceReport[]),
+    ]).then(([p, r]) => { setPilots(p); setReports(r); }).finally(() => setLoading(false));
   }, []);
 
-  const filtered = pilots.filter(
+  const accidentsByCallsign = reports
+    .filter((r) => r.status === "APPROVED")
+    .reduce<Record<string, number>>((acc, r) => {
+      acc[r.pilotCallsign] = (acc[r.pilotCallsign] ?? 0) + r.accidents;
+      return acc;
+    }, {});
+
+  const sorted = [...pilots].sort((a, b) => {
+    const ra = RANK_ORDER[a.rankName.toUpperCase()] ?? 0;
+    const rb = RANK_ORDER[b.rankName.toUpperCase()] ?? 0;
+    if (rb !== ra) return rb - ra;
+    return a.callsign.localeCompare(b.callsign);
+  });
+
+  const filtered = sorted.filter(
     (p) =>
       p.callsign.toLowerCase().includes(search.toLowerCase()) ||
       p.fullName.toLowerCase().includes(search.toLowerCase()) ||
-      p.rankName.toLowerCase().includes(search.toLowerCase())
+      p.rankName.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
-    <div className="p-3 md:p-6 space-y-4 min-h-full overflow-x-hidden" style={{ background: "#0a0d12" }}>
+    <div className="p-3 md:p-6 space-y-4 min-h-full" style={{ background: "#0a0d12" }}>
 
-      {/* Page header */}
+      {/* Header */}
       <div className="flex items-start md:items-center justify-between gap-3">
         <div>
           <p className="text-[10px] font-mono tracking-[3px] uppercase mb-1" style={{ color: "#5a7a9a" }}>
@@ -199,39 +127,142 @@ export default function PilotsPage() {
       </div>
 
       {/* Search */}
-      <div>
-        <input
-          type="text"
-          placeholder="Buscar por callsign, nome ou rank..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full max-w-sm font-mono text-sm px-3 py-2 rounded-md outline-none"
-          style={{ background: "#0d1117", border: "1px solid #1c2a3a", color: "#c8d6e5" }}
-          onFocus={(e) => (e.currentTarget.style.borderColor = "#e8c97e")}
-          onBlur={(e)  => (e.currentTarget.style.borderColor = "#1c2a3a")}
-        />
-      </div>
+      <input
+        type="text"
+        placeholder="Buscar por callsign, nome ou rank..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full max-w-sm font-mono text-sm px-3 py-2 rounded-md outline-none"
+        style={{ background: "#0d1117", border: "1px solid #1c2a3a", color: "#c8d6e5" }}
+        onFocus={(e) => (e.currentTarget.style.borderColor = "#e8c97e")}
+        onBlur={(e)  => (e.currentTarget.style.borderColor = "#1c2a3a")}
+      />
 
-      {/* Card grid */}
-      {loading ? (
-        <div className="py-20 text-center text-[11px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
-          Carregando...
+      {/* List */}
+      <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+
+        {/* Column headers — desktop only */}
+        <div
+          className="hidden md:grid px-4 py-2 text-[9px] font-mono tracking-[1.5px] uppercase"
+          style={{
+            color: "#3a5a7a",
+            borderBottom: "1px solid #1c2a3a",
+            gridTemplateColumns: "40px 1fr 1.5fr 1.2fr 0.8fr 0.8fr 0.8fr 1fr",
+            gap: "12px",
+          }}
+        >
+          <div />
+          <div>Callsign</div>
+          <div>Nome</div>
+          <div>Rank</div>
+          <div>Score</div>
+          <div>Voo</div>
+          <div>Acid.</div>
+          <div>Status</div>
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="py-20 text-center text-[11px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
-          Nenhum piloto encontrado
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-          {filtered.map((p) => (
-            <PilotCard
-              key={p.id}
-              pilot={p}
-              onClick={() => router.push(`/pilots/${p.id}`)}
-            />
-          ))}
-        </div>
-      )}
+
+        {loading ? (
+          <div className="py-16 text-center text-[11px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
+            Carregando...
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-16 text-center text-[11px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
+            Nenhum piloto encontrado
+          </div>
+        ) : (
+          filtered.map((p, i) => {
+            const rs        = getRankStyle(p.rankName);
+            const statusCfg = STATUS_STYLES[p.status] ?? { label: p.status, color: "#5a7a9a" };
+            const accidents = accidentsByCallsign[p.callsign] ?? 0;
+            const isLast    = i === filtered.length - 1;
+
+            return (
+              <div
+                key={p.id}
+                className="cursor-pointer transition-colors duration-150"
+                style={{ borderBottom: isLast ? "none" : "1px solid #111823" }}
+                onClick={() => router.push(`/pilots/${p.id}`)}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+              >
+                {/* Desktop row */}
+                <div
+                  className="hidden md:grid px-4 py-3 items-center"
+                  style={{ gridTemplateColumns: "40px 1fr 1.5fr 1.2fr 0.8fr 0.8fr 0.8fr 1fr", gap: "12px" }}
+                >
+                  {/* Avatar */}
+                  <Avatar pilot={p} size={32} />
+
+                  {/* Callsign */}
+                  <div className="font-mono text-sm font-bold truncate" style={{ color: rs.color }}>
+                    {p.callsign}
+                  </div>
+
+                  {/* Nome */}
+                  <div className="font-mono text-sm truncate" style={{ color: "#c8d6e5" }}>
+                    {p.fullName}
+                  </div>
+
+                  {/* Rank */}
+                  <div>
+                    <span
+                      className="text-[9px] font-mono tracking-[1px] uppercase px-2 py-0.5 rounded"
+                      style={{ background: rs.bg, color: rs.color, border: `1px solid ${rs.border}` }}
+                    >
+                      {RANK_LABEL[p.rankName.toUpperCase()] ?? p.rankName}
+                    </span>
+                  </div>
+
+                  {/* Score */}
+                  <div className="font-mono text-sm font-bold" style={{ color: rs.color }}>
+                    {p.accumulatedScore} pts
+                  </div>
+
+                  {/* Horas de voo */}
+                  <div className="font-mono text-sm" style={{ color: "#c8d6e5" }}>
+                    {formatHours(p.flightMinutes)}
+                  </div>
+
+                  {/* Acidentes */}
+                  <div className="font-mono text-sm font-bold" style={{ color: "#e24b4a" }}>
+                    {accidents}
+                  </div>
+
+                  {/* Status */}
+                  <div className="font-mono text-[11px] font-bold" style={{ color: statusCfg.color }}>
+                    ● {statusCfg.label}
+                  </div>
+                </div>
+
+                {/* Mobile row */}
+                <div className="flex md:hidden items-center gap-3 px-4 py-3">
+                  <Avatar pilot={p} size={36} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-mono text-sm font-bold" style={{ color: rs.color }}>{p.callsign}</span>
+                      <span
+                        className="text-[9px] font-mono tracking-[1px] uppercase px-1.5 py-0.5 rounded"
+                        style={{ background: rs.bg, color: rs.color, border: `1px solid ${rs.border}` }}
+                      >
+                        {RANK_LABEL[p.rankName.toUpperCase()] ?? p.rankName}
+                      </span>
+                    </div>
+                    <div className="font-mono text-[11px] truncate mt-0.5" style={{ color: "#5a7a9a" }}>{p.fullName}</div>
+                    <div className="flex items-center gap-3 mt-1 font-mono text-[11px]">
+                      <span style={{ color: "#c8d6e5" }}>{p.accumulatedScore} pts</span>
+                      <span style={{ color: "#5a7a9a" }}>{formatHours(p.flightMinutes)}</span>
+                      {accidents > 0 && <span style={{ color: "#e24b4a" }}>{accidents} acid.</span>}
+                    </div>
+                  </div>
+                  <div className="font-mono text-[11px] font-bold shrink-0" style={{ color: statusCfg.color }}>
+                    ● {statusCfg.label}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 }
