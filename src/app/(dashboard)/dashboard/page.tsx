@@ -27,7 +27,7 @@ function formatTime(iso: string) {
 }
 
 const FLIGHT_TYPE_MAP: Record<string, { label: string; bg: string; color: string }> = {
-  PATROL:            { label: "Patrulha",     bg: "#0a1f2a", color: "#4a90e2" },
+  PATROL:            { label: "Pers. 10-80",  bg: "#0a1f2a", color: "#4a90e2" },
   PURSUIT_10_94:     { label: "Perseguição",  bg: "#2a1010", color: "#e24b4a" },
   BANK_FLEECA_10_90: { label: "Banco Fleeca", bg: "#2a1f0a", color: "#e8c97e" },
   PALETO_BANK:       { label: "Banco Paleto", bg: "#2a1f0a", color: "#e8c97e" },
@@ -131,8 +131,11 @@ export default function DashboardPage() {
   const pilotByCallsign = new Map(pilots.map((p) => [p.callsign, p]));
 
   const topPilots = [...pilots]
-    .sort((a, b) => b.accumulatedScore - a.accumulatedScore)
-    .slice(0, 4);
+    .sort((a, b) =>
+      b.accumulatedScore !== a.accumulatedScore
+        ? b.accumulatedScore - a.accumulatedScore
+        : a.callsign.localeCompare(b.callsign)
+    );
 
   const recentFlights = [...flights]
     .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
@@ -253,7 +256,7 @@ export default function DashboardPage() {
         <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
           <div className="px-4 py-2.5" style={{ borderBottom: "1px solid #1c2a3a" }}>
             <span className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
-              Top Pilotos — Score
+              Ranking — Score
             </span>
           </div>
           <div className="px-4 py-1">

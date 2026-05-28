@@ -79,6 +79,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, []);
 
+  // Keepalive: pings the backend every 4 minutes while the user is authenticated
+  // to prevent the free-tier Render instance from going idle
+  useEffect(() => {
+    if (!token) return;
+    const id = setInterval(() => {
+      fetch(`${BASE_URL}/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }, 4 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [token]);
+
   // Force logout when api.ts detects an unrecoverable 401
   useEffect(() => {
     function onUnauthorized() {
