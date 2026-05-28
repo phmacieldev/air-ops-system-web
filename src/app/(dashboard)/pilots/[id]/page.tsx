@@ -268,7 +268,7 @@ export default function PilotProfilePage() {
       api.get<Pilot>(`/pilots/${id}`),
       api.get<FlightLog[]>("/flights"),
       api.get<PerformanceReport[]>("/reports"),
-      api.get<Rank[]>("/ranks"),
+      api.get<Rank[]>("/ranks", 300),
     ]).then(([p, fl, rep, rk]) => {
       setPilot(p);
       setFlights(fl.filter((f) => f.pilotCallsign === p.callsign)

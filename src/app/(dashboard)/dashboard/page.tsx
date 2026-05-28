@@ -129,7 +129,7 @@ export default function DashboardPage() {
   const [reports, setReports] = useState<PerformanceReport[]>([]);
 
   useEffect(() => {
-    api.get<Pilot[]>("/pilots").then(setPilots).catch(() => {});
+    api.get<Pilot[]>("/pilots", 60).then(setPilots).catch(() => {});
     api.get<FlightLog[]>("/flights").then(setFlights).catch(() => {});
     api.get<PerformanceReport[]>("/reports").then(setReports).catch(() => {});
   }, []);

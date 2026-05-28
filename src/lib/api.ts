@@ -1,5 +1,18 @@
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
+const _cache = new Map<string, { data: unknown; expiresAt: number }>();
+
+function fromCache<T>(key: string): T | null {
+  const entry = _cache.get(key);
+  if (entry && entry.expiresAt > Date.now()) return entry.data as T;
+  _cache.delete(key);
+  return null;
+}
+
+function toCache(key: string, data: unknown, ttlSeconds: number) {
+  _cache.set(key, { data, expiresAt: Date.now() + ttlSeconds * 1000 });
+}
+
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("asd_token");
@@ -25,7 +38,14 @@ async function doRefresh(): Promise<string | null> {
   }
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}, ttl = 0): Promise<T> {
+  const isGet = !options.method || options.method === "GET";
+
+  if (isGet && ttl > 0) {
+    const cached = fromCache<T>(path);
+    if (cached !== null) return cached;
+  }
+
   const token = getToken();
 
   const res = await fetch(`${BASE_URL}${path}`, {
@@ -64,11 +84,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   if (res.status === 204) return undefined as T;
-  return res.json();
+  const data = await res.json() as T;
+  if (isGet && ttl > 0) toCache(path, data, ttl);
+  return data;
 }
 
 export const api = {
-  get:    <T>(path: string) => request<T>(path),
+  get:    <T>(path: string, ttl = 0) => request<T>(path, {}, ttl),
   post:   <T>(path: string, body: unknown) => request<T>(path, { method: "POST",  body: JSON.stringify(body) }),
   put:    <T>(path: string, body: unknown) => request<T>(path, { method: "PUT",   body: JSON.stringify(body) }),
   patch:  <T>(path: string, body: unknown) => request<T>(path, { method: "PATCH", body: JSON.stringify(body) }),

@@ -79,7 +79,7 @@ export default function PilotsPage() {
 
   useEffect(() => {
     Promise.all([
-      api.get<Pilot[]>("/pilots"),
+      api.get<Pilot[]>("/pilots", 60),
       api.get<PerformanceReport[]>("/reports").catch(() => [] as PerformanceReport[]),
     ]).then(([p, r]) => { setPilots(p); setReports(r); }).finally(() => setLoading(false));
   }, []);

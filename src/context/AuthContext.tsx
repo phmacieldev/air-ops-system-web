@@ -70,10 +70,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const profile = await fetchProfile(active);
       if (profile) {
+        document.cookie = `asd_token=${active}; path=/; max-age=86400; SameSite=Lax`;
         setToken(active);
         setUser(profile);
       } else {
         localStorage.removeItem("asd_token");
+        document.cookie = "asd_token=; path=/; max-age=0";
       }
       setIsLoading(false);
     })();
@@ -105,9 +107,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function login(newToken: string) {
     localStorage.setItem("asd_token", newToken);
+    document.cookie = `asd_token=${newToken}; path=/; max-age=86400; SameSite=Lax`;
     const profile = await fetchProfile(newToken);
     if (!profile) {
       localStorage.removeItem("asd_token");
+      document.cookie = "asd_token=; path=/; max-age=0";
       throw new Error("Não foi possível carregar o perfil do usuário.");
     }
     setToken(newToken);
@@ -116,6 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   function logout() {
     localStorage.removeItem("asd_token");
+    document.cookie = "asd_token=; path=/; max-age=0";
     setToken(null);
     setUser(null);
   }

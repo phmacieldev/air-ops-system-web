@@ -17,21 +17,24 @@ const inputBase: React.CSSProperties = {
   outline: "none",
 };
 
+function borderFocus(e: React.FocusEvent<HTMLInputElement>) {
+  e.currentTarget.style.borderColor = "#e8c97e";
+  e.currentTarget.style.boxShadow   = "0 0 0 2px #e8c97e22";
+}
+function borderBlur(e: React.FocusEvent<HTMLInputElement>) {
+  e.currentTarget.style.borderColor = "#1c2a3a";
+  e.currentTarget.style.boxShadow   = "none";
+}
+
 export default function LoginPage() {
   const { login } = useAuth();
   const router = useRouter();
 
-  const [email, setEmail]       = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError]       = useState("");
-  const [loading, setLoading]   = useState(false);
-
-  function borderGold(e: React.FocusEvent<HTMLInputElement>) {
-    e.currentTarget.style.borderColor = "#e8c97e";
-  }
-  function borderReset(e: React.FocusEvent<HTMLInputElement>) {
-    e.currentTarget.style.borderColor = "#1c2a3a";
-  }
+  const [email, setEmail]         = useState("");
+  const [password, setPassword]   = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [error, setError]         = useState("");
+  const [loading, setLoading]     = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -125,8 +128,8 @@ export default function LoginPage() {
                 required
                 autoComplete="email"
                 style={inputBase}
-                onFocus={borderGold}
-                onBlur={borderReset}
+                onFocus={borderFocus}
+                onBlur={borderBlur}
               />
             </div>
 
@@ -137,21 +140,33 @@ export default function LoginPage() {
               >
                 Senha
               </label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                style={inputBase}
-                onFocus={borderGold}
-                onBlur={borderReset}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  autoComplete="current-password"
+                  style={{ ...inputBase, paddingRight: "40px" }}
+                  onFocus={borderFocus}
+                  onBlur={borderBlur}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[11px] transition-colors"
+                  style={{ color: showPassword ? "#e8c97e" : "#3a5a7a" }}
+                  aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
+                >
+                  {showPassword ? "ocultar" : "mostrar"}
+                </button>
+              </div>
             </div>
 
             {error && (
               <div
+                role="alert"
                 className="font-mono text-[11px] px-3 py-2 rounded"
                 style={{
                   background: "#2a0a0a",
