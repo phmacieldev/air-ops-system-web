@@ -27,12 +27,13 @@ function formatTime(iso: string) {
 }
 
 const FLIGHT_TYPE_MAP: Record<string, { label: string; bg: string; color: string }> = {
-  PATROL:            { label: "Patrulha",     bg: "#0a1f2a", color: "#4a90e2" },
+  PATRULHA:          { label: "Patrulha",     bg: "#1a1c2a", color: "#8a9ab8" },
+  PATROL:            { label: "Pers. 10-80",  bg: "#0a1f2a", color: "#4a90e2" },
   PURSUIT_10_94:     { label: "Perseguição",  bg: "#2a1010", color: "#e24b4a" },
   BANK_FLEECA_10_90: { label: "Banco Fleeca", bg: "#2a1f0a", color: "#e8c97e" },
   PALETO_BANK:       { label: "Banco Paleto", bg: "#2a1f0a", color: "#e8c97e" },
   BANK_68_10_90:     { label: "Banco 68",     bg: "#2a1f0a", color: "#e8c97e" },
-  BOOSTING_S:        { label: "Apreensão",    bg: "#0a2a14", color: "#3dd68c" },
+  BOOSTING_S:        { label: "Boost. 10-80", bg: "#0a2a14", color: "#3dd68c" },
 };
 
 function FlightTypeBadge({ type }: { type: string }) {
@@ -77,6 +78,16 @@ const RANK_COLOR: Record<string, string> = {
 };
 
 const MEDAL_COLORS = ["#e8c97e", "#8a9ab8", "#9a6030", "#3a4a5a"];
+
+const RANK_LABEL: Record<string, string> = {
+  LEAD:           "Lead",
+  SUPERVISOR:     "Sup.",
+  INSTRUCTOR:     "Inst.",
+  PILOT_SENIOR:   "Senior",
+  PILOT_PLENO:    "Pleno",
+  PILOT_STANDARD: "Std",
+  TRAINEE:        "Trainee",
+};
 
 function PilotAvatar({ name, callsign, photoUrl, size = 32 }: {
   name?: string;
@@ -125,24 +136,28 @@ export default function DashboardPage() {
 
   const activePilots   = pilots.filter((p) => p.status === "ACTIVE").length;
   const totalFlightHrs = Math.floor(pilots.reduce((a, p) => a + p.flightMinutes, 0) / 60);
-  const pendingFlights = flights.filter((f) => f.flightStatus === "PENDING").length;
-  const pendingReports = reports.filter((r) => r.status === "PENDING").length;
+  const approvedReports = reports.filter((r) => r.status === "APPROVED");
+  const totalSeizures  = approvedReports.reduce((a, r) => a + r.seizures,  0);
+  const totalAccidents = approvedReports.reduce((a, r) => a + r.accidents, 0);
 
   const pilotByCallsign = new Map(pilots.map((p) => [p.callsign, p]));
 
   const topPilots = [...pilots]
-    .sort((a, b) => b.accumulatedScore - a.accumulatedScore)
-    .slice(0, 4);
+    .sort((a, b) =>
+      b.accumulatedScore !== a.accumulatedScore
+        ? b.accumulatedScore - a.accumulatedScore
+        : a.callsign.localeCompare(b.callsign)
+    );
 
   const recentFlights = [...flights]
     .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
     .slice(0, 5);
 
   const statCards = [
-    { label: "Pilotos Ativos",       value: activePilots,   sub: `${pilots.length} total`,    accent: "#e8c97e" },
-    { label: "Horas de Voo",         value: totalFlightHrs, sub: "horas acumuladas",           accent: "#4a90e2" },
-    { label: "Voos Pendentes",        value: pendingFlights, sub: `${flights.length} total`,   accent: "#3dd68c" },
-    { label: "Relatórios Pendentes", value: pendingReports, sub: `${reports.length} total`,    accent: "#e24b4a" },
+    { label: "Pilotos Ativos", value: activePilots,   sub: `${pilots.length} total`,              accent: "#e8c97e" },
+    { label: "Horas de Voo",   value: totalFlightHrs, sub: "horas acumuladas",                    accent: "#4a90e2" },
+    { label: "Apreensões",     value: totalSeizures,  sub: `${approvedReports.length} relatórios`, accent: "#3dd68c" },
+    { label: "Acidentes",      value: totalAccidents, sub: `${approvedReports.length} relatórios`, accent: "#e24b4a" },
   ];
 
   return (
@@ -209,8 +224,8 @@ export default function DashboardPage() {
                 return (
                   <div
                     key={f.id}
-                    className="flex items-center gap-3 py-2.5"
-                    style={{ borderBottom: "1px solid #111823" }}
+                    className="grid items-center gap-3 py-2.5"
+                    style={{ gridTemplateColumns: "34px 1fr 1.2fr 1fr auto", borderBottom: "1px solid #111823" }}
                   >
                     <PilotAvatar
                       callsign={f.pilotCallsign}
@@ -218,23 +233,21 @@ export default function DashboardPage() {
                       photoUrl={pilot?.profileImageUrl}
                       size={34}
                     />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-sm font-bold leading-none" style={{ color: callsignColor }}>
-                          {f.pilotCallsign}
+                    <div className="font-mono text-sm font-bold leading-none truncate" style={{ color: callsignColor }}>
+                      {f.pilotCallsign}
+                    </div>
+                    <div className="font-mono text-[10px] truncate" style={{ color: "#5a7a9a" }}>
+                      {f.pilotName}
+                    </div>
+                    <div>
+                      {pilot && (
+                        <span
+                          className="text-[9px] font-mono uppercase px-1 py-px rounded whitespace-nowrap"
+                          style={{ background: rankStyle.bg, color: rankStyle.color, border: `1px solid ${rankStyle.border}` }}
+                        >
+                          {RANK_LABEL[pilot.rankName] ?? pilot.rankName}
                         </span>
-                        {pilot && (
-                          <span
-                            className="text-[9px] font-mono tracking-[1px] uppercase px-1.5 py-0.5 rounded leading-none"
-                            style={{ background: rankStyle.bg, color: rankStyle.color, border: `1px solid ${rankStyle.border}` }}
-                          >
-                            {pilot.rankName}
-                          </span>
-                        )}
-                      </div>
-                      <div className="font-mono text-[10px] mt-0.5 truncate" style={{ color: "#5a7a9a" }}>
-                        {f.pilotName} · {formatTime(f.startedAt)}
-                      </div>
+                      )}
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <FlightTypeBadge type={f.flightType} />
@@ -253,7 +266,7 @@ export default function DashboardPage() {
         <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
           <div className="px-4 py-2.5" style={{ borderBottom: "1px solid #1c2a3a" }}>
             <span className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
-              Top Pilotos — Score
+              Ranking — Score
             </span>
           </div>
           <div className="px-4 py-1">
@@ -263,39 +276,34 @@ export default function DashboardPage() {
               </p>
             ) : (
               topPilots.map((p, i) => {
-                const rankStyle  = getRankStyle(p.rankName);
-                const medalColor = MEDAL_COLORS[i] ?? "#3a4a5a";
+                const rankStyle     = getRankStyle(p.rankName);
+                const medalColor    = MEDAL_COLORS[i] ?? "#3a4a5a";
                 const callsignColor = RANK_COLOR[p.rankName] ?? "#c8d6e5";
                 return (
                   <div
                     key={p.id}
-                    className="flex items-center gap-3 py-2.5"
-                    style={{ borderBottom: "1px solid #111823" }}
+                    className="grid items-center gap-3 py-2.5"
+                    style={{ gridTemplateColumns: "20px 36px 1fr 1.2fr 1fr 0.8fr", borderBottom: "1px solid #111823" }}
                   >
-                    <div className="font-mono text-xl font-bold w-5 leading-none shrink-0 text-center" style={{ color: medalColor }}>
+                    <div className="font-mono text-sm font-bold leading-none text-center shrink-0" style={{ color: medalColor }}>
                       {i + 1}
                     </div>
-                    <PilotAvatar
-                      callsign={p.callsign}
-                      name={p.fullName}
-                      photoUrl={p.profileImageUrl}
-                      size={36}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="font-mono text-sm font-bold leading-none truncate" style={{ color: callsignColor }}>
-                        {p.callsign}
-                      </div>
-                      <div className="font-mono text-[10px] mt-0.5 truncate" style={{ color: "#5a7a9a" }}>
-                        {p.fullName}
-                      </div>
+                    <PilotAvatar callsign={p.callsign} name={p.fullName} photoUrl={p.profileImageUrl} size={36} />
+                    <div className="font-mono text-sm font-bold leading-none truncate" style={{ color: callsignColor }}>
+                      {p.callsign}
+                    </div>
+                    <div className="font-mono text-[10px] truncate" style={{ color: "#5a7a9a" }}>
+                      {p.fullName}
+                    </div>
+                    <div>
                       <span
-                        className="text-[9px] font-mono tracking-[1px] uppercase mt-1 inline-block px-1.5 py-0.5 rounded"
+                        className="text-[9px] font-mono uppercase px-1 py-px rounded whitespace-nowrap"
                         style={{ background: rankStyle.bg, color: rankStyle.color, border: `1px solid ${rankStyle.border}` }}
                       >
-                        {p.rankName}
+                        {RANK_LABEL[p.rankName] ?? p.rankName}
                       </span>
                     </div>
-                    <div className="font-mono text-sm font-bold shrink-0" style={{ color: medalColor }}>
+                    <div className="font-mono text-sm font-bold text-right" style={{ color: medalColor }}>
                       {p.accumulatedScore} pts
                     </div>
                   </div>

@@ -128,18 +128,18 @@ export default function RegisterPage() {
             </div>
             <div className="p-4 space-y-3">
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Nome de guerra *">
+                <Field label="Nome de piloto *">
                   <input type="text" required value={fullName} onChange={(e) => onFullNameChange(e.target.value)}
-                    placeholder="Henry Schneider" style={inputBase} onFocus={focus} onBlur={blur} />
+                    placeholder="John Doe" style={inputBase} onFocus={focus} onBlur={blur} />
                 </Field>
                 <Field label="Callsign / Matrícula *">
                   <input type="text" required value={callsign} onChange={(e) => setCallsign(e.target.value)}
-                    placeholder="405" style={inputBase} onFocus={focus} onBlur={blur} />
+                    placeholder="XXX" style={inputBase} onFocus={focus} onBlur={blur} />
                 </Field>
               </div>
               <Field label="Discord ID *">
                 <input type="text" required value={discordId} onChange={(e) => setDiscordId(e.target.value)}
-                  placeholder="123456789012345678" style={inputBase} onFocus={focus} onBlur={blur} />
+                  placeholder="" style={inputBase} onFocus={focus} onBlur={blur} />
               </Field>
               <Field label="URL da foto de perfil (opcional)">
                 <input type="url" value={profileImageUrl} onChange={(e) => setProfileImageUrl(e.target.value)}
@@ -172,7 +172,7 @@ export default function RegisterPage() {
                 <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
                   placeholder="henry@email.com" style={inputBase} onFocus={focus} onBlur={blur} />
               </Field>
-              <Field label="Senha provisória *">
+              <Field label="Senha *">
                 <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
                   placeholder="mín. 6 caracteres" style={inputBase} onFocus={focus} onBlur={blur} />
               </Field>

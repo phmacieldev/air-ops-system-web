@@ -34,8 +34,9 @@ const SCORE_TIERS = [
 ];
 
 const FLIGHT_TYPE_LABELS: Record<string, string> = {
-  PATROL: "Patrulha", PURSUIT_10_94: "Perseguição", BANK_FLEECA_10_90: "Banco Fleeca",
-  PALETO_BANK: "Banco Paleto", BANK_68_10_90: "Banco 68", BOOSTING_S: "Apreensão",
+  PATRULHA: "Patrulha", PATROL: "Pers. 10-80", PURSUIT_10_94: "Perseguição",
+  BANK_FLEECA_10_90: "Banco Fleeca", PALETO_BANK: "Banco Paleto",
+  BANK_68_10_90: "Banco 68", BOOSTING_S: "Boost. 10-80",
 };
 
 const STATUS_LABELS: Record<string, string> = {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { FlightLog } from "@/types";
@@ -8,12 +8,13 @@ import { FlightLog } from "@/types";
 // ── Enums ─────────────────────────────────────────────────────────────────
 
 const FLIGHT_TYPE_OPTIONS = [
-  { value: "PATROL",            label: "Patrulha Aérea",       bg: "#0a1f2a", color: "#4a90e2" },
+  { value: "PATRULHA",          label: "Patrulha",             bg: "#1a1c2a", color: "#8a9ab8" },
+  { value: "PATROL",            label: "Perseguição 10-80",    bg: "#0a1f2a", color: "#4a90e2" },
   { value: "PURSUIT_10_94",     label: "Perseguição [10-94]",  bg: "#2a1010", color: "#e24b4a" },
   { value: "BANK_FLEECA_10_90", label: "Banco Fleeca [10-90]", bg: "#2a1f0a", color: "#e8c97e" },
   { value: "PALETO_BANK",       label: "Banco Paleto",          bg: "#2a1f0a", color: "#e8c97e" },
   { value: "BANK_68_10_90",     label: "Banco 68 [10-90]",     bg: "#2a1f0a", color: "#e8c97e" },
-  { value: "BOOSTING_S",        label: "Apreensão Veicular",   bg: "#0a2a14", color: "#3dd68c" },
+  { value: "BOOSTING_S",        label: "Boosting-S 10-80",     bg: "#0a2a14", color: "#3dd68c" },
 ] as const;
 
 const AIRCRAFT_OPTIONS = [
@@ -23,12 +24,13 @@ const AIRCRAFT_OPTIONS = [
 ] as const;
 
 const FLIGHT_TYPE_MAP: Record<string, { label: string; bg: string; color: string }> = {
-  PATROL:            { label: "Patrulha",       bg: "#0a1f2a", color: "#4a90e2" },
+  PATRULHA:          { label: "Patrulha",       bg: "#1a1c2a", color: "#8a9ab8" },
+  PATROL:            { label: "Pers. 10-80",    bg: "#0a1f2a", color: "#4a90e2" },
   PURSUIT_10_94:     { label: "Perseguição",    bg: "#2a1010", color: "#e24b4a" },
   BANK_FLEECA_10_90: { label: "Banco Fleeca",   bg: "#2a1f0a", color: "#e8c97e" },
   PALETO_BANK:       { label: "Banco Paleto",   bg: "#2a1f0a", color: "#e8c97e" },
   BANK_68_10_90:     { label: "Banco 68",       bg: "#2a1f0a", color: "#e8c97e" },
-  BOOSTING_S:        { label: "Apreensão",      bg: "#0a2a14", color: "#3dd68c" },
+  BOOSTING_S:        { label: "Boost. 10-80",   bg: "#0a2a14", color: "#3dd68c" },
 };
 
 const AIRCRAFT_LABEL: Record<string, string> = {
@@ -127,6 +129,201 @@ function borderReset(e: React.FocusEvent<HTMLElement>) {
   e.currentTarget.style.borderColor = "#1c2a3a";
 }
 
+// ── Edit Flight Modal ─────────────────────────────────────────────────────
+
+function EditFlightModal({
+  flight,
+  onClose,
+  onSaved,
+}: {
+  flight: FlightLog;
+  onClose: () => void;
+  onSaved: (updated: FlightLog) => void;
+}) {
+  const initialDate      = flight.startedAt.split("T")[0];
+  const initialStartTime = flight.startedAt.split("T")[1]?.slice(0, 5) ?? "";
+  const initialEndTime   = flight.endAt ? flight.endAt.split("T")[1]?.slice(0, 5) ?? "" : "";
+
+  const [flightType, setFlightType] = useState<string>(flight.flightType);
+  const [aircraft,   setAircraft]   = useState<string>(flight.aircraft);
+  const [date,       setDate]       = useState(initialDate);
+  const [startTime,  setStartTime]  = useState(initialStartTime);
+  const [endTime,    setEndTime]    = useState(initialEndTime);
+  const [notes,      setNotes]      = useState(flight.notes ?? "");
+  const [saving,     setSaving]     = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
+
+  async function handleSave() {
+    if (!date || !startTime) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await api.put<FlightLog>(`/flights/${flight.id}`, {
+        aircraft,
+        flightType,
+        startedAt: `${date}T${startTime}:00`,
+        endAt:     endTime ? `${date}T${endTime}:00` : null,
+        notes:     notes.trim() || null,
+      });
+      onSaved(updated);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao salvar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.7)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="w-full max-w-md rounded-lg overflow-hidden"
+        style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}
+      >
+        {/* Header */}
+        <div
+          className="px-4 py-3 flex items-center justify-between"
+          style={{ borderBottom: "1px solid #1c2a3a" }}
+        >
+          <div>
+            <div className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
+              Editar Protocolo
+            </div>
+            <div className="text-[10px] font-mono mt-0.5" style={{ color: "#5a7a9a" }}>
+              {flight.pilotCallsign} · {flight.pilotName}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="font-mono text-lg leading-none px-1"
+            style={{ color: "#5a7a9a" }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-4 space-y-4">
+
+          {/* Tipo + Aeronave */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Tipo de Missão</Label>
+              <select
+                value={flightType}
+                onChange={(e) => setFlightType(e.target.value)}
+                style={inputBase}
+                onFocus={borderGold}
+                onBlur={borderReset}
+              >
+                {FLIGHT_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Aeronave</Label>
+              <select
+                value={aircraft}
+                onChange={(e) => setAircraft(e.target.value)}
+                style={inputBase}
+                onFocus={borderGold}
+                onBlur={borderReset}
+              >
+                {AIRCRAFT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Data */}
+          <div>
+            <Label>Data</Label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              style={inputBase}
+              onFocus={borderGold}
+              onBlur={borderReset}
+            />
+          </div>
+
+          {/* Início + Término */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Início</Label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                style={inputBase}
+                onFocus={borderGold}
+                onBlur={borderReset}
+              />
+            </div>
+            <div>
+              <Label>Término</Label>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                style={inputBase}
+                onFocus={borderGold}
+                onBlur={borderReset}
+              />
+            </div>
+          </div>
+
+          {/* Observações */}
+          <div>
+            <Label>Observações</Label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              style={{ ...inputBase, resize: "none" }}
+              onFocus={borderGold}
+              onBlur={borderReset}
+            />
+          </div>
+
+          {error && (
+            <p className="text-[11px] font-mono" style={{ color: "#e24b4a" }}>{error}</p>
+          )}
+
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={onClose}
+              className="font-mono text-[12px] tracking-[1px] uppercase px-4 py-2 rounded"
+              style={{ background: "#1c2a3a", color: "#5a7a9a" }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving || !date || !startTime}
+              className="font-mono text-[12px] tracking-[1px] uppercase px-5 py-2 rounded font-semibold"
+              style={{
+                background: "#e8c97e",
+                color: "#0a0d12",
+                opacity: (saving || !date || !startTime || !endTime) ? 0.6 : 1,
+                cursor: (saving || !date || !startTime || !endTime) ? "not-allowed" : "pointer",
+              }}
+            >
+              {saving ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default function FlightsPage() {
@@ -136,7 +333,8 @@ export default function FlightsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess]       = useState(false);
   const [error, setError]           = useState<string | null>(null);
-  const [reviewing, setReviewing]   = useState<string | null>(null);
+  const [reviewing, setReviewing]       = useState<string | null>(null);
+  const [editingFlight, setEditingFlight] = useState<FlightLog | null>(null);
 
   const today   = new Date().toISOString().split("T")[0];
   const timeNow = new Date().toTimeString().slice(0, 5);
@@ -179,7 +377,7 @@ export default function FlightsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!date || !startTime || !endTime) return;
+    if (!date || !startTime) return;
     setSubmitting(true);
     setError(null);
     try {
@@ -188,7 +386,7 @@ export default function FlightsPage() {
         aircraft,
         flightType,
         startedAt: `${date}T${startTime}:00`,
-        endAt:     `${date}T${endTime}:00`,
+        endAt:     endTime ? `${date}T${endTime}:00` : null,
         notes:     notes.trim() || null,
       });
       setFlights((prev) => [created, ...prev]);
@@ -221,6 +419,18 @@ export default function FlightsPage() {
 
   return (
     <div className="p-3 md:p-6 space-y-4 min-h-full" style={{ background: "#0a0d12" }}>
+
+      {/* Edit modal */}
+      {editingFlight && (
+        <EditFlightModal
+          flight={editingFlight}
+          onClose={() => setEditingFlight(null)}
+          onSaved={(updated) => {
+            setFlights((prev) => prev.map((f) => (f.id === updated.id ? updated : f)));
+            setEditingFlight(null);
+          }}
+        />
+      )}
 
       {/* Page header */}
       <div className="flex items-start md:items-center justify-between gap-3">
@@ -314,12 +524,11 @@ export default function FlightsPage() {
                 />
               </div>
               <div>
-                <Label>Término</Label>
+                <Label>Término (opcional)</Label>
                 <input
                   type="time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  required
                   style={inputBase}
                   onFocus={borderGold}
                   onBlur={borderReset}
@@ -334,7 +543,7 @@ export default function FlightsPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
-                placeholder="Resultado da missão, ocorrências..."
+                placeholder="Incidente, ocorrências, número de 10-95, etc..."
                 style={{ ...inputBase, resize: "none" }}
                 onFocus={borderGold}
                 onBlur={borderReset}
@@ -448,20 +657,23 @@ export default function FlightsPage() {
                   return (
                     <div
                       key={f.id}
-                      className="flex items-center gap-3 py-2.5"
-                      style={{ borderBottom: "1px solid #111823" }}
+                      className="grid items-center gap-3 py-2.5"
+                      style={{ gridTemplateColumns: "68px 1fr 1.2fr auto auto auto", borderBottom: "1px solid #111823" }}
                     >
-                      <div className="font-mono text-[11px] min-w-[70px] shrink-0" style={{ color: "#5a7a9a" }}>
+                      <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>
                         {formatTime(f.startedAt)}
                       </div>
-                      <div className="flex-1 font-mono text-sm truncate" style={{ color: "#c8d6e5" }}>
+                      <div className="font-mono text-sm font-bold truncate" style={{ color: "#c8d6e5" }}>
                         {f.pilotCallsign}
                       </div>
-                      <TypeBadge type={f.flightType} />
-                      <div className="font-mono text-sm font-bold shrink-0" style={{ color: "#e8c97e" }}>
+                      <div className="font-mono text-[10px] truncate" style={{ color: "#5a7a9a" }}>
+                        {f.pilotName}
+                      </div>
+                      <div><TypeBadge type={f.flightType} /></div>
+                      <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>
                         {formatMins(mins)}
                       </div>
-                      <StatusBadge status={f.flightStatus} />
+                      <div><StatusBadge status={f.flightStatus} /></div>
                     </div>
                   );
                 })
@@ -533,8 +745,8 @@ export default function FlightsPage() {
         ) : (
           <div>
             <div className="hidden md:grid gap-x-3 px-4 py-1.5 text-[9px] font-mono tracking-[1.5px] uppercase"
-              style={{ gridTemplateColumns: "1.4fr 1.2fr 0.9fr 0.7fr 0.7fr 0.8fr", borderBottom: "1px solid #1c2a3a", color: "#5a7a9a" }}>
-              {["Piloto", "Tipo", "Aeronave", "Início", "Duração", "Status"].map(h => <div key={h}>{h}</div>)}
+              style={{ gridTemplateColumns: "1fr 1.2fr 1fr 0.9fr 0.7fr 0.7fr 0.8fr", borderBottom: "1px solid #1c2a3a", color: "#5a7a9a" }}>
+              {["Callsign", "Nome", "Tipo", "Aeronave", "Início", "Duração", "Status"].map(h => <div key={h}>{h}</div>)}
             </div>
             {filteredFlights.map((f) => {
               const mins = f.endAt ? calcDurationMins(f.startedAt, f.endAt) : null;
@@ -542,18 +754,25 @@ export default function FlightsPage() {
                 <div key={f.id}>
                   {/* Desktop row */}
                   <div className="hidden md:grid gap-x-3 px-4 py-2.5 items-center transition-colors"
-                    style={{ gridTemplateColumns: "1.4fr 1.2fr 0.9fr 0.7fr 0.7fr 0.8fr", borderBottom: "1px solid #111823" }}
+                    style={{ gridTemplateColumns: "1fr 1.2fr 1fr 0.9fr 0.7fr 0.7fr 0.8fr auto", borderBottom: "1px solid #111823" }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-                    <div>
-                      <div className="font-mono text-sm font-bold leading-none" style={{ color: "#c8d6e5" }}>{f.pilotCallsign}</div>
-                      <div className="font-mono text-[10px] mt-0.5" style={{ color: "#5a7a9a" }}>{f.pilotName}</div>
-                    </div>
-                    <TypeBadge type={f.flightType} />
+                    <div className="font-mono text-sm font-bold leading-none truncate" style={{ color: "#c8d6e5" }}>{f.pilotCallsign}</div>
+                    <div className="font-mono text-[10px] truncate" style={{ color: "#5a7a9a" }}>{f.pilotName}</div>
+                    <div><TypeBadge type={f.flightType} /></div>
                     <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{AIRCRAFT_LABEL[f.aircraft] ?? f.aircraft}</div>
                     <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{formatTime(f.startedAt)}</div>
                     <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>{formatMins(mins)}</div>
-                    <StatusBadge status={f.flightStatus} />
+                    <div><StatusBadge status={f.flightStatus} /></div>
+                    {f.flightStatus === "PENDING" && (
+                      <button
+                        onClick={() => setEditingFlight(f)}
+                        className="font-mono text-[10px] tracking-[1px] uppercase px-2.5 py-1 rounded"
+                        style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e244", whiteSpace: "nowrap" }}
+                      >
+                        Editar
+                      </button>
+                    )}
                   </div>
                   {/* Mobile card */}
                   <div className="md:hidden flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: "1px solid #111823" }}>
@@ -563,6 +782,15 @@ export default function FlightsPage() {
                     </div>
                     <TypeBadge type={f.flightType} />
                     <StatusBadge status={f.flightStatus} />
+                    {f.flightStatus === "PENDING" && (
+                      <button
+                        onClick={() => setEditingFlight(f)}
+                        className="font-mono text-[10px] tracking-[1px] uppercase px-2.5 py-1 rounded"
+                        style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e244" }}
+                      >
+                        Editar
+                      </button>
+                    )}
                   </div>
                 </div>
               );
