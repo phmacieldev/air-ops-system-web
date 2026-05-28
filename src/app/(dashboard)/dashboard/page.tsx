@@ -125,8 +125,9 @@ export default function DashboardPage() {
 
   const activePilots   = pilots.filter((p) => p.status === "ACTIVE").length;
   const totalFlightHrs = Math.floor(pilots.reduce((a, p) => a + p.flightMinutes, 0) / 60);
-  const pendingFlights = flights.filter((f) => f.flightStatus === "PENDING").length;
-  const pendingReports = reports.filter((r) => r.status === "PENDING").length;
+  const approvedReports = reports.filter((r) => r.status === "APPROVED");
+  const totalSeizures  = approvedReports.reduce((a, r) => a + r.seizures,  0);
+  const totalAccidents = approvedReports.reduce((a, r) => a + r.accidents, 0);
 
   const pilotByCallsign = new Map(pilots.map((p) => [p.callsign, p]));
 
@@ -142,10 +143,10 @@ export default function DashboardPage() {
     .slice(0, 5);
 
   const statCards = [
-    { label: "Pilotos Ativos",       value: activePilots,   sub: `${pilots.length} total`,    accent: "#e8c97e" },
-    { label: "Horas de Voo",         value: totalFlightHrs, sub: "horas acumuladas",           accent: "#4a90e2" },
-    { label: "Voos Pendentes",        value: pendingFlights, sub: `${flights.length} total`,   accent: "#3dd68c" },
-    { label: "Relatórios Pendentes", value: pendingReports, sub: `${reports.length} total`,    accent: "#e24b4a" },
+    { label: "Pilotos Ativos", value: activePilots,   sub: `${pilots.length} total`,              accent: "#e8c97e" },
+    { label: "Horas de Voo",   value: totalFlightHrs, sub: "horas acumuladas",                    accent: "#4a90e2" },
+    { label: "Apreensões",     value: totalSeizures,  sub: `${approvedReports.length} relatórios`, accent: "#3dd68c" },
+    { label: "Acidentes",      value: totalAccidents, sub: `${approvedReports.length} relatórios`, accent: "#e24b4a" },
   ];
 
   return (
