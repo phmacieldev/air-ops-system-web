@@ -70,117 +70,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-/* ─── Card mobile ─── */
-function ReportCard({
-  report,
-  canReview,
-  onApprove,
-  approving,
-}: {
-  report: PerformanceReport;
-  canReview: boolean;
-  onApprove: (id: string) => void;
-  approving: string | null;
-}) {
-  const rankColor = RANK_COLOR[report.pilotRank] ?? "#5a7a9a";
-  const busy = approving === report.id;
-  return (
-    <div className="px-4 py-3 space-y-3" style={{ borderBottom: "1px solid #1c2a3a" }}>
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="flex-1 min-w-0">
-          <div className="font-mono text-base font-bold leading-none" style={{ color: rankColor }}>
-            {report.pilotCallsign}
-          </div>
-          <div className="font-mono text-[11px] mt-0.5" style={{ color: "#5a7a9a" }}>
-            {report.pilotName}
-          </div>
-        </div>
-        <StatusBadge status={report.status} />
-        {canReview && report.status === "PENDING" && (
-          <button
-            disabled={busy}
-            onClick={() => onApprove(report.id)}
-            className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-opacity"
-            style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1 }}
-          >
-            {busy ? "..." : "Aprovar"}
-          </button>
-        )}
-      </div>
-      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-        {[
-          { label: "Apreensões",   value: report.seizures,   color: "#c8d6e5" },
-          { label: "Perseguições", value: report.chases,     color: "#4a90e2" },
-          { label: "Operações",    value: report.operations, color: "#3dd68c" },
-          { label: "Acidentes",    value: report.accidents,  color: "#e24b4a" },
-        ].map(({ label, value, color }) => (
-          <div key={label} className="flex items-center gap-2">
-            <div className="font-mono text-xl font-bold leading-none" style={{ color }}>{value}</div>
-            <div className="text-[9px] font-mono tracking-[1px] uppercase" style={{ color: "#5a7a9a" }}>{label}</div>
-          </div>
-        ))}
-      </div>
-      <ScoreBar pilotRank={report.pilotRank} pilotAccumulatedScore={report.pilotAccumulatedScore} />
-    </div>
-  );
-}
-
-/* ─── Row desktop ─── */
-function ReportRow({
-  report,
-  canReview,
-  onApprove,
-  approving,
-}: {
-  report: PerformanceReport;
-  canReview: boolean;
-  onApprove: (id: string) => void;
-  approving: string | null;
-}) {
-  const rankColor = RANK_COLOR[report.pilotRank] ?? "#5a7a9a";
-  const busy = approving === report.id;
-  return (
-    <div
-      className="grid gap-x-4 px-4 py-3 items-center transition-colors cursor-default"
-      style={{
-        gridTemplateColumns: canReview && report.status === "PENDING"
-          ? "1.2fr 0.55fr 0.65fr 0.55fr 0.55fr 1.8fr 0.75fr auto"
-          : "1.4fr 0.55fr 0.65fr 0.55fr 0.55fr 1.8fr 0.85fr",
-        borderBottom: "1px solid #111823",
-      }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
-      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-    >
-      <div>
-        <div className="font-mono text-sm font-bold leading-none" style={{ color: rankColor }}>
-          {report.pilotCallsign}
-        </div>
-        <div className="font-mono text-[11px] mt-0.5" style={{ color: "#5a7a9a" }}>
-          {report.pilotName}
-        </div>
-      </div>
-      <div className="font-mono text-lg font-bold" style={{ color: "#c8d6e5" }}>{report.seizures}</div>
-      <div className="font-mono text-lg font-bold" style={{ color: "#4a90e2" }}>{report.chases}</div>
-      <div className="font-mono text-lg font-bold" style={{ color: "#3dd68c" }}>{report.operations}</div>
-      <div className="font-mono text-lg font-bold" style={{ color: "#e24b4a" }}>{report.accidents}</div>
-      <ScoreBar pilotRank={report.pilotRank} pilotAccumulatedScore={report.pilotAccumulatedScore} />
-      <div className="flex justify-start">
-        <StatusBadge status={report.status} />
-      </div>
-      {canReview && report.status === "PENDING" && (
-        <button
-          disabled={busy}
-          onClick={() => onApprove(report.id)}
-          className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded ml-2 transition-opacity"
-          style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1, whiteSpace: "nowrap" }}
-        >
-          {busy ? "..." : "Aprovar"}
-        </button>
-      )}
-    </div>
-  );
-}
-
 // ── Stepper input ─────────────────────────────────────────────────────────
 
 function Stepper({
@@ -224,6 +113,263 @@ function Stepper({
   );
 }
 
+// ── Edit Modal ────────────────────────────────────────────────────────────
+
+function EditReportModal({
+  report,
+  onClose,
+  onSaved,
+}: {
+  report: PerformanceReport;
+  onClose: () => void;
+  onSaved: (updated: PerformanceReport) => void;
+}) {
+  const [seizures,   setSeizures]   = useState(report.seizures);
+  const [chases,     setChases]     = useState(report.chases);
+  const [operations, setOperations] = useState(report.operations);
+  const [accidents,  setAccidents]  = useState(report.accidents);
+  const [saving, setSaving]         = useState(false);
+  const [error, setError]           = useState<string | null>(null);
+
+  const previewScore = seizures * 5 + chases * 3 + operations * 3 - accidents * 5;
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await api.put<PerformanceReport>(`/reports/${report.id}`, {
+        seizures, chases, operations, accidents,
+      });
+      onSaved(updated);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao salvar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.7)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="w-full max-w-md rounded-lg overflow-hidden"
+        style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}
+      >
+        {/* Header */}
+        <div
+          className="px-4 py-3 flex items-center justify-between"
+          style={{ borderBottom: "1px solid #1c2a3a" }}
+        >
+          <div>
+            <div className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
+              Editar Relatório
+            </div>
+            <div className="text-[10px] font-mono mt-0.5" style={{ color: "#5a7a9a" }}>
+              {report.pilotCallsign} · {report.pilotName}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="font-mono text-lg leading-none px-1"
+            style={{ color: "#5a7a9a" }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-4 space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Stepper label="Apreensões"   value={seizures}   color="#c8d6e5" onChange={setSeizures}   />
+            <Stepper label="Perseguições" value={chases}     color="#4a90e2" onChange={setChases}     />
+            <Stepper label="Operações"    value={operations} color="#3dd68c" onChange={setOperations} />
+            <Stepper label="Acidentes"    value={accidents}  color="#e24b4a" onChange={setAccidents}  />
+          </div>
+
+          {/* Score preview */}
+          <div
+            className="rounded-lg p-3 flex items-center justify-between"
+            style={{ background: "#0a0d12", border: "1px solid #1c2a3a" }}
+          >
+            <span className="text-[10px] font-mono tracking-[1px] uppercase" style={{ color: "#5a7a9a" }}>
+              Score desta missão
+            </span>
+            <span className="font-mono text-2xl font-bold" style={{ color: previewScore >= 0 ? "#e8c97e" : "#e24b4a" }}>
+              {Math.max(0, previewScore)}
+            </span>
+          </div>
+
+          {error && (
+            <p className="text-[11px] font-mono" style={{ color: "#e24b4a" }}>{error}</p>
+          )}
+
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={onClose}
+              className="font-mono text-[12px] tracking-[1px] uppercase px-4 py-2 rounded"
+              style={{ background: "#1c2a3a", color: "#5a7a9a" }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="font-mono text-[12px] tracking-[1px] uppercase px-5 py-2 rounded font-semibold"
+              style={{
+                background: "#e8c97e",
+                color: "#0a0d12",
+                opacity: saving ? 0.6 : 1,
+                cursor: saving ? "not-allowed" : "pointer",
+              }}
+            >
+              {saving ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Card mobile ─── */
+function ReportCard({
+  report,
+  canReview,
+  onApprove,
+  approving,
+  onEdit,
+}: {
+  report: PerformanceReport;
+  canReview: boolean;
+  onApprove: (id: string) => void;
+  approving: string | null;
+  onEdit: (r: PerformanceReport) => void;
+}) {
+  const rankColor = RANK_COLOR[report.pilotRank] ?? "#5a7a9a";
+  const busy = approving === report.id;
+  return (
+    <div className="px-4 py-3 space-y-3" style={{ borderBottom: "1px solid #1c2a3a" }}>
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex-1 min-w-0">
+          <div className="font-mono text-base font-bold leading-none" style={{ color: rankColor }}>
+            {report.pilotCallsign}
+          </div>
+          <div className="font-mono text-[11px] mt-0.5" style={{ color: "#5a7a9a" }}>
+            {report.pilotName}
+          </div>
+        </div>
+        <StatusBadge status={report.status} />
+        {report.status === "PENDING" && (
+          <button
+            onClick={() => onEdit(report)}
+            className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded"
+            style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e244" }}
+          >
+            Editar
+          </button>
+        )}
+        {canReview && report.status === "PENDING" && (
+          <button
+            disabled={busy}
+            onClick={() => onApprove(report.id)}
+            className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-opacity"
+            style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1 }}
+          >
+            {busy ? "..." : "Aprovar"}
+          </button>
+        )}
+      </div>
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2">
+        {[
+          { label: "Apreensões",   value: report.seizures,   color: "#c8d6e5" },
+          { label: "Perseguições", value: report.chases,     color: "#4a90e2" },
+          { label: "Operações",    value: report.operations, color: "#3dd68c" },
+          { label: "Acidentes",    value: report.accidents,  color: "#e24b4a" },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="flex items-center gap-2">
+            <div className="font-mono text-xl font-bold leading-none" style={{ color }}>{value}</div>
+            <div className="text-[9px] font-mono tracking-[1px] uppercase" style={{ color: "#5a7a9a" }}>{label}</div>
+          </div>
+        ))}
+      </div>
+      <ScoreBar pilotRank={report.pilotRank} pilotAccumulatedScore={report.pilotAccumulatedScore} />
+    </div>
+  );
+}
+
+/* ─── Row desktop ─── */
+function ReportRow({
+  report,
+  canReview,
+  onApprove,
+  approving,
+  onEdit,
+}: {
+  report: PerformanceReport;
+  canReview: boolean;
+  onApprove: (id: string) => void;
+  approving: string | null;
+  onEdit: (r: PerformanceReport) => void;
+}) {
+  const rankColor = RANK_COLOR[report.pilotRank] ?? "#5a7a9a";
+  const busy = approving === report.id;
+  const hasActions = report.status === "PENDING";
+  return (
+    <div
+      className="grid gap-x-4 px-4 py-3 items-center transition-colors cursor-default"
+      style={{
+        gridTemplateColumns: hasActions
+          ? "1.2fr 0.55fr 0.65fr 0.55fr 0.55fr 1.8fr 0.75fr auto"
+          : "1.4fr 0.55fr 0.65fr 0.55fr 0.55fr 1.8fr 0.85fr",
+        borderBottom: "1px solid #111823",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
+      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+    >
+      <div>
+        <div className="font-mono text-sm font-bold leading-none" style={{ color: rankColor }}>
+          {report.pilotCallsign}
+        </div>
+        <div className="font-mono text-[11px] mt-0.5" style={{ color: "#5a7a9a" }}>
+          {report.pilotName}
+        </div>
+      </div>
+      <div className="font-mono text-lg font-bold" style={{ color: "#c8d6e5" }}>{report.seizures}</div>
+      <div className="font-mono text-lg font-bold" style={{ color: "#4a90e2" }}>{report.chases}</div>
+      <div className="font-mono text-lg font-bold" style={{ color: "#3dd68c" }}>{report.operations}</div>
+      <div className="font-mono text-lg font-bold" style={{ color: "#e24b4a" }}>{report.accidents}</div>
+      <ScoreBar pilotRank={report.pilotRank} pilotAccumulatedScore={report.pilotAccumulatedScore} />
+      <div className="flex justify-start">
+        <StatusBadge status={report.status} />
+      </div>
+      {hasActions && (
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => onEdit(report)}
+            className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded"
+            style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e244", whiteSpace: "nowrap" }}
+          >
+            Editar
+          </button>
+          {canReview && (
+            <button
+              disabled={busy}
+              onClick={() => onApprove(report.id)}
+              className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-opacity"
+              style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1, whiteSpace: "nowrap" }}
+            >
+              {busy ? "..." : "Aprovar"}
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
@@ -242,13 +388,14 @@ export default function ReportsPage() {
   const [operations, setOperations] = useState(0);
   const [accidents, setAccidents]   = useState(0);
 
+  const [editingReport, setEditingReport] = useState<PerformanceReport | null>(null);
+
   useEffect(() => {
     Promise.all([
       api.get<PerformanceReport[]>("/reports"),
       api.get<FlightLog[]>("/flights"),
     ]).then(([r, f]) => {
       setReports(r);
-      // Only approved flights that don't already have a report
       const reportedFlightIds = new Set(r.map((rep) => rep.flightId));
       const eligible = f.filter(
         (fl) => fl.flightStatus === "APPROVED" && !reportedFlightIds.has(fl.id)
@@ -314,6 +461,18 @@ export default function ReportsPage() {
 
   return (
     <div className="p-3 md:p-6 space-y-4 min-h-full overflow-x-hidden" style={{ background: "#0a0d12" }}>
+
+      {/* Edit modal */}
+      {editingReport && (
+        <EditReportModal
+          report={editingReport}
+          onClose={() => setEditingReport(null)}
+          onSaved={(updated) => {
+            setReports((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+            setEditingReport(null);
+          }}
+        />
+      )}
 
       {/* Page header */}
       <div className="flex items-start md:items-center justify-between gap-3">
@@ -527,6 +686,7 @@ export default function ReportsPage() {
                   canReview={canReview}
                   onApprove={approveReport}
                   approving={approving}
+                  onEdit={setEditingReport}
                 />
               ))}
             </div>
@@ -538,6 +698,7 @@ export default function ReportsPage() {
                   canReview={canReview}
                   onApprove={approveReport}
                   approving={approving}
+                  onEdit={setEditingReport}
                 />
               ))}
             </div>

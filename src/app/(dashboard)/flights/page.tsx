@@ -127,6 +127,201 @@ function borderReset(e: React.FocusEvent<HTMLElement>) {
   e.currentTarget.style.borderColor = "#1c2a3a";
 }
 
+// ── Edit Flight Modal ─────────────────────────────────────────────────────
+
+function EditFlightModal({
+  flight,
+  onClose,
+  onSaved,
+}: {
+  flight: FlightLog;
+  onClose: () => void;
+  onSaved: (updated: FlightLog) => void;
+}) {
+  const initialDate      = flight.startedAt.split("T")[0];
+  const initialStartTime = flight.startedAt.split("T")[1]?.slice(0, 5) ?? "";
+  const initialEndTime   = flight.endAt ? flight.endAt.split("T")[1]?.slice(0, 5) ?? "" : "";
+
+  const [flightType, setFlightType] = useState<string>(flight.flightType);
+  const [aircraft,   setAircraft]   = useState<string>(flight.aircraft);
+  const [date,       setDate]       = useState(initialDate);
+  const [startTime,  setStartTime]  = useState(initialStartTime);
+  const [endTime,    setEndTime]    = useState(initialEndTime);
+  const [notes,      setNotes]      = useState(flight.notes ?? "");
+  const [saving,     setSaving]     = useState(false);
+  const [error,      setError]      = useState<string | null>(null);
+
+  async function handleSave() {
+    if (!date || !startTime || !endTime) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const updated = await api.put<FlightLog>(`/flights/${flight.id}`, {
+        aircraft,
+        flightType,
+        startedAt: `${date}T${startTime}:00`,
+        endAt:     `${date}T${endTime}:00`,
+        notes:     notes.trim() || null,
+      });
+      onSaved(updated);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao salvar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.7)" }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div
+        className="w-full max-w-md rounded-lg overflow-hidden"
+        style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}
+      >
+        {/* Header */}
+        <div
+          className="px-4 py-3 flex items-center justify-between"
+          style={{ borderBottom: "1px solid #1c2a3a" }}
+        >
+          <div>
+            <div className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
+              Editar Protocolo
+            </div>
+            <div className="text-[10px] font-mono mt-0.5" style={{ color: "#5a7a9a" }}>
+              {flight.pilotCallsign} · {flight.pilotName}
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="font-mono text-lg leading-none px-1"
+            style={{ color: "#5a7a9a" }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="p-4 space-y-4">
+
+          {/* Tipo + Aeronave */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Tipo de Missão</Label>
+              <select
+                value={flightType}
+                onChange={(e) => setFlightType(e.target.value)}
+                style={inputBase}
+                onFocus={borderGold}
+                onBlur={borderReset}
+              >
+                {FLIGHT_TYPE_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Aeronave</Label>
+              <select
+                value={aircraft}
+                onChange={(e) => setAircraft(e.target.value)}
+                style={inputBase}
+                onFocus={borderGold}
+                onBlur={borderReset}
+              >
+                {AIRCRAFT_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Data */}
+          <div>
+            <Label>Data</Label>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              style={inputBase}
+              onFocus={borderGold}
+              onBlur={borderReset}
+            />
+          </div>
+
+          {/* Início + Término */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Início</Label>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                style={inputBase}
+                onFocus={borderGold}
+                onBlur={borderReset}
+              />
+            </div>
+            <div>
+              <Label>Término</Label>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                style={inputBase}
+                onFocus={borderGold}
+                onBlur={borderReset}
+              />
+            </div>
+          </div>
+
+          {/* Observações */}
+          <div>
+            <Label>Observações</Label>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={2}
+              style={{ ...inputBase, resize: "none" }}
+              onFocus={borderGold}
+              onBlur={borderReset}
+            />
+          </div>
+
+          {error && (
+            <p className="text-[11px] font-mono" style={{ color: "#e24b4a" }}>{error}</p>
+          )}
+
+          <div className="flex gap-2 justify-end">
+            <button
+              onClick={onClose}
+              className="font-mono text-[12px] tracking-[1px] uppercase px-4 py-2 rounded"
+              style={{ background: "#1c2a3a", color: "#5a7a9a" }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saving || !date || !startTime || !endTime}
+              className="font-mono text-[12px] tracking-[1px] uppercase px-5 py-2 rounded font-semibold"
+              style={{
+                background: "#e8c97e",
+                color: "#0a0d12",
+                opacity: (saving || !date || !startTime || !endTime) ? 0.6 : 1,
+                cursor: (saving || !date || !startTime || !endTime) ? "not-allowed" : "pointer",
+              }}
+            >
+              {saving ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default function FlightsPage() {
@@ -136,7 +331,8 @@ export default function FlightsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess]       = useState(false);
   const [error, setError]           = useState<string | null>(null);
-  const [reviewing, setReviewing]   = useState<string | null>(null);
+  const [reviewing, setReviewing]       = useState<string | null>(null);
+  const [editingFlight, setEditingFlight] = useState<FlightLog | null>(null);
 
   const today   = new Date().toISOString().split("T")[0];
   const timeNow = new Date().toTimeString().slice(0, 5);
@@ -221,6 +417,18 @@ export default function FlightsPage() {
 
   return (
     <div className="p-3 md:p-6 space-y-4 min-h-full" style={{ background: "#0a0d12" }}>
+
+      {/* Edit modal */}
+      {editingFlight && (
+        <EditFlightModal
+          flight={editingFlight}
+          onClose={() => setEditingFlight(null)}
+          onSaved={(updated) => {
+            setFlights((prev) => prev.map((f) => (f.id === updated.id ? updated : f)));
+            setEditingFlight(null);
+          }}
+        />
+      )}
 
       {/* Page header */}
       <div className="flex items-start md:items-center justify-between gap-3">
@@ -542,7 +750,7 @@ export default function FlightsPage() {
                 <div key={f.id}>
                   {/* Desktop row */}
                   <div className="hidden md:grid gap-x-3 px-4 py-2.5 items-center transition-colors"
-                    style={{ gridTemplateColumns: "1.4fr 1.2fr 0.9fr 0.7fr 0.7fr 0.8fr", borderBottom: "1px solid #111823" }}
+                    style={{ gridTemplateColumns: "1.4fr 1.2fr 0.9fr 0.7fr 0.7fr 0.8fr auto", borderBottom: "1px solid #111823" }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                     <div>
@@ -554,6 +762,15 @@ export default function FlightsPage() {
                     <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{formatTime(f.startedAt)}</div>
                     <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>{formatMins(mins)}</div>
                     <StatusBadge status={f.flightStatus} />
+                    {f.flightStatus === "PENDING" && (
+                      <button
+                        onClick={() => setEditingFlight(f)}
+                        className="font-mono text-[10px] tracking-[1px] uppercase px-2.5 py-1 rounded"
+                        style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e244", whiteSpace: "nowrap" }}
+                      >
+                        Editar
+                      </button>
+                    )}
                   </div>
                   {/* Mobile card */}
                   <div className="md:hidden flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: "1px solid #111823" }}>
@@ -563,6 +780,15 @@ export default function FlightsPage() {
                     </div>
                     <TypeBadge type={f.flightType} />
                     <StatusBadge status={f.flightStatus} />
+                    {f.flightStatus === "PENDING" && (
+                      <button
+                        onClick={() => setEditingFlight(f)}
+                        className="font-mono text-[10px] tracking-[1px] uppercase px-2.5 py-1 rounded"
+                        style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e244" }}
+                      >
+                        Editar
+                      </button>
+                    )}
                   </div>
                 </div>
               );
