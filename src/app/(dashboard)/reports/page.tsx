@@ -408,7 +408,7 @@ export default function ReportsPage() {
   useEffect(() => {
     Promise.all([
       api.get<PerformanceReport[]>("/reports"),
-      api.get<FlightLog[]>("/flights/mine"),
+      api.get<FlightLog[]>("/flights/mine").catch(() => [] as FlightLog[]),
     ]).then(([r, f]) => {
       setReports(r);
       const reportedFlightIds = new Set(r.map((rep) => rep.flightId));
