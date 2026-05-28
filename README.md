@@ -17,11 +17,11 @@ Interface web de gestão interna da **Air Support Division (ASD)**, unidade aér
 | Rota | Descrição | Acesso |
 |------|-----------|--------|
 | `/login` | Autenticação JWT | Público |
-| `/dashboard` | Visão geral: atividade recente e top pilotos | Todos |
-| `/pilots` | Roster completo da unidade | Todos |
+| `/dashboard` | Stats, atividade recente e ranking de pilotos | Todos |
+| `/pilots` | Roster em cards: foto, callsign, rank, score, status | Todos |
 | `/pilots/[id]` | Perfil: histórico de voos, score, rank, edição | Todos / LEAD+SUPERVISOR p/ editar |
-| `/flights` | Protocolo de voo: registro e histórico com filtros | Todos |
-| `/reports` | Relatórios de desempenho e score bar | Todos |
+| `/flights` | Protocolos de voo — criar, editar (PENDING), aprovar | Todos / LEAD p/ aprovar |
+| `/reports` | Relatórios de desempenho — criar, editar (PENDING), aprovar | Todos / LEAD+SUPERVISOR p/ aprovar |
 | `/documents` | Biblioteca: SOPs, manuais, protocolos | Todos |
 | `/register` | Cadastro de novo membro | LEAD, SUPERVISOR |
 
@@ -70,3 +70,32 @@ npm start
 3. Deploy automático a cada push na branch `main`
 
 > O Vercel detecta Next.js automaticamente — nenhuma configuração adicional necessária.
+
+---
+
+## Keepalive (Render Free Tier)
+
+O backend no Render Free hiberna após 15 min sem requisições. Duas estratégias estão ativas:
+
+- **Client-side**: enquanto o usuário está logado, o frontend faz ping em `/me` a cada 4 minutos.
+- **Server-side**: `vercel.json` configura um cron em `/api/keepalive` a cada 5 minutos (**requer Vercel Pro**).
+
+Para o plano Hobby do Vercel, use [cron-job.org](https://cron-job.org) apontando `GET https://seu-app.vercel.app/api/keepalive` a cada 5 minutos.
+
+---
+
+## Hierarquia de Ranks
+
+| Rank | Nível | Score |
+|---|---|---|
+| LEAD | 10 | Não rastreado |
+| SUPERVISOR | 6 | Não rastreado |
+| INSTRUCTOR | 5 | Não rastreado |
+| PILOT_SENIOR | 4 | 1000+ pts |
+| PILOT_PLENO | 3 | 600–999 pts |
+| PILOT_STANDARD | 2 | 200–599 pts |
+| TRAINEE | 1 | 0–199 pts |
+
+**Fórmula de score:** `apreensões×5 + perseguições×3 + operações×3 − acidentes×5`
+
+Ranks com nível ≥ 5 (INSTRUCTOR, SUPERVISOR, LEAD) são imunes à promoção/rebaixamento automático e não acumulam score.
