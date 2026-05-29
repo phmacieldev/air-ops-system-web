@@ -419,7 +419,7 @@ export default function ReportsPage() {
       setReports(r);
       const reportedFlightIds = new Set(r.map((rep) => rep.flightId));
       const eligible = f.filter(
-        (fl) => fl.flightStatus === "APPROVED" && !reportedFlightIds.has(fl.id)
+        (fl) => (fl.flightStatus === "APPROVED" || fl.flightStatus === "PENDING") && !reportedFlightIds.has(fl.id)
       );
       setFlights(eligible);
       if (eligible.length > 0) setFlightId(eligible[0].id);
