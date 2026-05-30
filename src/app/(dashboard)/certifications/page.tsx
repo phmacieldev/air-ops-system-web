@@ -16,6 +16,23 @@ const CERT_META: Record<CertificateType, { label: string; bg: string; color: str
   TRANSPORT:     { label: "Transporte",    bg: "#1a1c2a", color: "#8a9ab8", border: "#4a5a7a44", forExternal: true },
 };
 
+function CertAvatar({ imageUrl, name, size = 34 }: { imageUrl?: string | null; name: string; size?: number }) {
+  const initials = name.split(/[.\s_-]/).slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase().slice(0, 2) || "?";
+  if (imageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={imageUrl} alt={name} className="rounded-full object-cover shrink-0"
+        style={{ width: size, height: size }} />
+    );
+  }
+  return (
+    <div className="rounded-full flex items-center justify-center font-mono font-bold shrink-0"
+      style={{ width: size, height: size, background: "#1c2a3a", color: "#e8c97e", fontSize: size * 0.32, border: "1px solid #e8c97e22" }}>
+      {initials}
+    </div>
+  );
+}
+
 function RevokableBadge({ cert, onRevoke, canDelete }: {
   cert: Certification;
   onRevoke: (id: string) => void;
@@ -45,6 +62,7 @@ function RevokableBadge({ cert, onRevoke, canDelete }: {
 type CertGroup = {
   key: string;
   callsign: string | null;
+  profileImageUrl: string | null;
   fullName: string;
   discordId: string | null;
   externalCallsign: string | null;
@@ -63,6 +81,7 @@ function groupCerts(certs: Certification[], tab: HolderType): CertGroup[] {
       map.set(key, {
         key,
         callsign: cert.memberCallsign,
+        profileImageUrl: cert.memberProfileImageUrl,
         fullName: cert.fullName,
         discordId: cert.discordId,
         externalCallsign: cert.externalCallsign,
@@ -435,12 +454,12 @@ export default function CertificationsPage() {
         {/* Header */}
         <div className="hidden md:grid px-4 py-2 text-[9px] font-mono tracking-[1.5px] uppercase"
           style={{
-            gridTemplateColumns: tab === "MEMBER" ? "0.8fr 1.2fr 1.6fr" : "1fr 1fr 1fr 1.4fr",
+            gridTemplateColumns: tab === "MEMBER" ? "40px 0.8fr 1.2fr 1.6fr" : "40px 0.9fr 1fr 0.8fr 1.4fr",
             borderBottom: "1px solid #1c2a3a", color: "#8a9ab8",
           }}>
           {tab === "MEMBER"
-            ? ["Callsign", "Nome", "Certificações"].map((h, i) => <div key={i}>{h}</div>)
-            : ["Callsign", "Nome", "Patente / Unidade", "Certificações"].map((h, i) => <div key={i}>{h}</div>)
+            ? ["", "Callsign", "Nome", "Certificações"].map((h, i) => <div key={i}>{h}</div>)
+            : ["", "Callsign", "Nome", "Patente / Unidade", "Certificações"].map((h, i) => <div key={i}>{h}</div>)
           }
         </div>
 
@@ -458,18 +477,20 @@ export default function CertificationsPage() {
               {/* Desktop */}
               <div className="hidden md:grid px-4 py-3 items-center transition-colors"
                 style={{
-                  gridTemplateColumns: tab === "MEMBER" ? "0.8fr 1.2fr 1.6fr" : "1fr 1fr 1fr 1.4fr",
+                  gridTemplateColumns: tab === "MEMBER" ? "40px 0.8fr 1.2fr 1.6fr" : "40px 0.9fr 1fr 0.8fr 1.4fr",
                   borderBottom: "1px solid #111823",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                 {tab === "MEMBER" ? (
                   <>
+                    <CertAvatar imageUrl={g.profileImageUrl} name={g.callsign ?? g.fullName} />
                     <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>{g.callsign ?? "—"}</div>
                     <div className="font-mono text-[11px]" style={{ color: "#c8d6e5" }}>{g.fullName}</div>
                   </>
                 ) : (
                   <>
+                    <CertAvatar imageUrl={null} name={g.externalCallsign ?? g.fullName} />
                     <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>{g.externalCallsign ?? "—"}</div>
                     <div className="font-mono text-[11px]" style={{ color: "#c8d6e5" }}>{g.fullName}</div>
                     <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>
@@ -506,6 +527,11 @@ export default function CertificationsPage() {
               {/* Mobile */}
               <div className="md:hidden flex items-center gap-3 px-4 py-3"
                 style={{ borderBottom: "1px solid #111823" }}>
+                <CertAvatar
+                  imageUrl={tab === "MEMBER" ? g.profileImageUrl : null}
+                  name={tab === "MEMBER" ? (g.callsign ?? g.fullName) : (g.externalCallsign ?? g.fullName)}
+                  size={38}
+                />
                 <div className="flex-1 min-w-0">
                   <div className="font-mono text-sm font-bold mb-1" style={{ color: "#e8c97e" }}>
                     {tab === "MEMBER" ? (g.callsign ?? g.fullName) : (g.externalCallsign ?? g.fullName)}

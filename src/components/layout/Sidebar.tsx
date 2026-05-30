@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { api } from "@/lib/api";
+import { Pilot } from "@/types";
 import { LayoutDashboard, Users, Plane, FileText, BookOpen, LogOut, UserPlus, Award, Settings } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -68,7 +70,15 @@ function LogoutButton({ onLogout }: { onLogout: () => void }) {
 export function Sidebar() {
   const pathname = usePathname();
   const router   = useRouter();
-  const { user, logout } = useAuth();
+  const { user, logout, token } = useAuth();
+  const [myPilotId, setMyPilotId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token) return;
+    api.get<Pilot>("/pilots/me", 3600)
+      .then((p) => setMyPilotId(p.id))
+      .catch(() => {});
+  }, [token]);
 
   return (
     <aside
@@ -153,14 +163,24 @@ export function Sidebar() {
 
       {/* User info + Logout */}
       <div className="px-3 py-3" style={{ borderTop: "1px solid #1c2a3a" }}>
-        {user && (
-          <div className="px-3 py-2 mb-2 rounded" style={{ background: "#0a0d12" }}>
+        {user && myPilotId && (
+          <Link href={`/pilots/${myPilotId}`}
+            className="block px-3 py-2 mb-1 rounded transition-colors"
+            style={{ background: "#0a0d12" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "#0a0d12")}>
             <p className="font-mono text-[11px] font-bold truncate" style={{ color: "#c8d6e5" }}>
               {user.name}
             </p>
             <p className="font-mono text-[9px] tracking-[1.5px] uppercase truncate" style={{ color: "#5a7a9a" }}>
-              {user.role}
+              {user.role} · ver perfil
             </p>
+          </Link>
+        )}
+        {user && !myPilotId && (
+          <div className="px-3 py-2 mb-1 rounded" style={{ background: "#0a0d12" }}>
+            <p className="font-mono text-[11px] font-bold truncate" style={{ color: "#c8d6e5" }}>{user.name}</p>
+            <p className="font-mono text-[9px] tracking-[1.5px] uppercase truncate" style={{ color: "#5a7a9a" }}>{user.role}</p>
           </div>
         )}
         <LogoutButton onLogout={() => { logout(); router.push("/login"); }} />

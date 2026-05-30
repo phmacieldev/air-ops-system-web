@@ -83,6 +83,7 @@ export interface Certification {
   holderType: HolderType;
   memberId: string | null;
   memberCallsign: string | null;
+  memberProfileImageUrl: string | null;
   fullName: string;
   discordId: string | null;
   externalCallsign: string | null;
