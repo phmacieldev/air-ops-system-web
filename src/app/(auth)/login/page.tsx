@@ -194,7 +194,7 @@ export default function LoginPage() {
           </form>
         </div>
 
-        <p className="text-center font-mono text-[9px] tracking-[2px] uppercase" style={{ color: "#3a5a7a" }}>
+        <p className="text-center font-mono text-[9px] tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
           Acesso restrito a membros da ASD
         </p>
 

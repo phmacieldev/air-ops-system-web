@@ -80,22 +80,30 @@ function formatTime(iso: string) {
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
 }
 
+const REFRESH_INTERVAL = 60;
+
 export default function StatusPage() {
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [error, setError] = useState(false);
-  const [active, setActive] = useState(false);
+  const [stats,     setStats]     = useState<Stats | null>(null);
+  const [error,     setError]     = useState(false);
+  const [active,    setActive]    = useState(false);
+  const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
+
+  function fetchStats() {
+    fetch(`${API_URL}/public/stats`)
+      .then((r) => { if (!r.ok) throw new Error(); return r.json() as Promise<Stats>; })
+      .then((data) => { setStats(data); setError(false); setCountdown(REFRESH_INTERVAL); setTimeout(() => setActive(true), 100); })
+      .catch(() => setError(true));
+  }
 
   useEffect(() => {
-    fetch(`${API_URL}/public/stats`)
-      .then((r) => {
-        if (!r.ok) throw new Error();
-        return r.json() as Promise<Stats>;
-      })
-      .then((data) => {
-        setStats(data);
-        setTimeout(() => setActive(true), 100);
-      })
-      .catch(() => setError(true));
+    fetchStats();
+    const poll = setInterval(fetchStats, REFRESH_INTERVAL * 1000);
+    return () => clearInterval(poll);
+  }, []);
+
+  useEffect(() => {
+    const tick = setInterval(() => setCountdown((c) => (c > 0 ? c - 1 : REFRESH_INTERVAL)), 1000);
+    return () => clearInterval(tick);
   }, []);
 
   return (
@@ -114,9 +122,14 @@ export default function StatusPage() {
             Sistema Online
           </span>
         </div>
-        <span className="text-[10px] font-mono tracking-[2px] uppercase" style={{ color: "#3a5a7a" }}>
-          Air Support Division · LSPD
-        </span>
+        <div className="flex items-center gap-4">
+          <span className="text-[9px] font-mono tracking-[1px]" style={{ color: "#3a5a7a" }}>
+            atualiza em <span style={{ color: "#5a7a9a" }}>{countdown}s</span>
+          </span>
+          <span className="text-[10px] font-mono tracking-[2px] uppercase" style={{ color: "#3a5a7a" }}>
+            Air Support Division · LSPD
+          </span>
+        </div>
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-4 py-12 gap-10">
@@ -207,13 +220,13 @@ export default function StatusPage() {
                 }}
               >
                 <div className="text-[9px] font-mono tracking-[2px] uppercase" style={{ color: "#3a5a7a" }}>
-                  Atualizado em
+                  Última atualização
                 </div>
                 <div className="font-mono text-2xl font-bold" style={{ color: "#5a7a9a" }}>
                   {formatTime(stats.atualizado_em)}
                 </div>
                 <div className="text-[10px] font-mono" style={{ color: "#3a5a7a" }}>
-                  horário do servidor
+                  próxima em <span style={{ color: "#5a7a9a" }}>{countdown}s</span>
                 </div>
               </div>
             </div>

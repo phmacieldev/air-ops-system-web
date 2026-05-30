@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { FlightLog } from "@/types";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 // ── Enums ─────────────────────────────────────────────────────────────────
 
@@ -115,7 +116,7 @@ function Label({ children }: { children: React.ReactNode }) {
   return (
     <label
       className="block text-[10px] font-mono tracking-[1.5px] uppercase mb-1"
-      style={{ color: "#5a7a9a" }}
+      style={{ color: "#c8d6e5" }}
     >
       {children}
     </label>
@@ -143,6 +144,7 @@ function EditFlightModal({
   const initialDate      = flight.startedAt.split("T")[0];
   const initialStartTime = flight.startedAt.split("T")[1]?.slice(0, 5) ?? "";
   const initialEndTime   = flight.endAt ? flight.endAt.split("T")[1]?.slice(0, 5) ?? "" : "";
+  const todayEdit        = new Date().toISOString().split("T")[0];
 
   const [flightType, setFlightType] = useState<string>(flight.flightType);
   const [aircraft,   setAircraft]   = useState<string>(flight.aircraft);
@@ -155,6 +157,10 @@ function EditFlightModal({
 
   async function handleSave() {
     if (!date || !startTime) return;
+    if (new Date(`${date}T${startTime}:00`) > new Date()) {
+      setError("A data e hora de início não podem ser no futuro.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -246,7 +252,8 @@ function EditFlightModal({
             <input
               type="date"
               value={date}
-              onChange={(e) => setDate(e.target.value)}
+              max={todayEdit}
+              onChange={(e) => { setDate(e.target.value); setError(null); }}
               style={inputBase}
               onFocus={borderGold}
               onBlur={borderReset}
@@ -260,7 +267,7 @@ function EditFlightModal({
               <input
                 type="time"
                 value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
+                onChange={(e) => { setStartTime(e.target.value); setError(null); }}
                 style={inputBase}
                 onFocus={borderGold}
                 onBlur={borderReset}
@@ -333,8 +340,9 @@ export default function FlightsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess]       = useState(false);
   const [error, setError]           = useState<string | null>(null);
-  const [reviewing, setReviewing]       = useState<string | null>(null);
-  const [editingFlight, setEditingFlight] = useState<FlightLog | null>(null);
+  const [reviewing, setReviewing]           = useState<string | null>(null);
+  const [editingFlight, setEditingFlight]   = useState<FlightLog | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const today   = new Date().toISOString().split("T")[0];
   const timeNow = new Date().toTimeString().slice(0, 5);
@@ -365,7 +373,15 @@ export default function FlightsPage() {
     finally { setReviewing(null); }
   }
 
-  const isLead        = user?.role === "LEAD";
+  const isLead        = user?.role === "LEAD" || user?.role === "ADM";
+
+  async function deleteFlight(id: string) {
+    try {
+      await api.delete(`/flights/${id}`);
+      setFlights((prev) => prev.filter((f) => f.id !== id));
+    } catch { /* silently ignore */ }
+    finally { setConfirmDeleteId(null); }
+  }
   const pendingFlights = flights.filter((f) => f.flightStatus === "PENDING");
 
   const selectedType = FLIGHT_TYPE_OPTIONS.find((o) => o.value === flightType)!;
@@ -378,6 +394,10 @@ export default function FlightsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!date || !startTime) return;
+    if (new Date(`${date}T${startTime}:00`) > new Date()) {
+      setError("A data e hora de início não podem ser no futuro.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -431,6 +451,16 @@ export default function FlightsPage() {
           }}
         />
       )}
+
+      {/* Confirm delete modal */}
+      <ConfirmModal
+        open={!!confirmDeleteId}
+        title="Deletar Protocolo"
+        description="Este protocolo rejeitado será removido permanentemente. Esta ação não pode ser desfeita."
+        confirmLabel="Deletar"
+        onConfirm={() => confirmDeleteId && deleteFlight(confirmDeleteId)}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
 
       {/* Page header */}
       <div className="flex items-start md:items-center justify-between gap-3">
@@ -501,7 +531,8 @@ export default function FlightsPage() {
               <input
                 type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                max={today}
+                onChange={(e) => { setDate(e.target.value); setError(null); }}
                 required
                 style={inputBase}
                 onFocus={borderGold}
@@ -516,7 +547,7 @@ export default function FlightsPage() {
                 <input
                   type="time"
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  onChange={(e) => { setStartTime(e.target.value); setError(null); }}
                   required
                   style={inputBase}
                   onFocus={borderGold}
@@ -620,7 +651,7 @@ export default function FlightsPage() {
                   { lbl: "Término", val: endTime   || "—" },
                 ].map(({ lbl, val }) => (
                   <div key={lbl}>
-                    <div className="text-[9px] font-mono tracking-[1px] uppercase" style={{ color: "#3a5a7a" }}>{lbl}</div>
+                    <div className="text-[9px] font-mono tracking-[1px] uppercase" style={{ color: "#5a7a9a" }}>{lbl}</div>
                     <div className="font-mono text-sm" style={{ color: "#c8d6e5" }}>{val}</div>
                   </div>
                 ))}
@@ -628,7 +659,7 @@ export default function FlightsPage() {
 
               {notes && (
                 <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>
-                  <span style={{ color: "#3a5a7a" }}>Obs: </span>
+                  <span style={{ color: "#5a7a9a" }}>Obs: </span>
                   <span style={{ color: "#c8d6e5" }}>{notes}</span>
                 </div>
               )}
@@ -745,8 +776,8 @@ export default function FlightsPage() {
         ) : (
           <div>
             <div className="hidden md:grid gap-x-3 px-4 py-1.5 text-[9px] font-mono tracking-[1.5px] uppercase"
-              style={{ gridTemplateColumns: "1fr 1.2fr 1fr 0.9fr 0.7fr 0.7fr 0.8fr", borderBottom: "1px solid #1c2a3a", color: "#5a7a9a" }}>
-              {["Callsign", "Nome", "Tipo", "Aeronave", "Início", "Duração", "Status"].map(h => <div key={h}>{h}</div>)}
+              style={{ gridTemplateColumns: "1fr 1.2fr 1fr 0.9fr 0.7fr 0.7fr 0.7fr 0.8fr", borderBottom: "1px solid #1c2a3a", color: "#8a9ab8" }}>
+              {["Callsign", "Nome", "Tipo", "Aeronave", "Início", "Fim", "Duração", "Status"].map(h => <div key={h}>{h}</div>)}
             </div>
             {filteredFlights.map((f) => {
               const mins = f.endAt ? calcDurationMins(f.startedAt, f.endAt) : null;
@@ -754,7 +785,7 @@ export default function FlightsPage() {
                 <div key={f.id}>
                   {/* Desktop row */}
                   <div className="hidden md:grid gap-x-3 px-4 py-2.5 items-center transition-colors"
-                    style={{ gridTemplateColumns: "1fr 1.2fr 1fr 0.9fr 0.7fr 0.7fr 0.8fr auto", borderBottom: "1px solid #111823" }}
+                    style={{ gridTemplateColumns: "1fr 1.2fr 1fr 0.9fr 0.7fr 0.7fr 0.7fr 0.8fr auto", borderBottom: "1px solid #111823" }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                     <div className="font-mono text-sm font-bold leading-none truncate" style={{ color: "#c8d6e5" }}>{f.pilotCallsign}</div>
@@ -762,6 +793,7 @@ export default function FlightsPage() {
                     <div><TypeBadge type={f.flightType} /></div>
                     <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{AIRCRAFT_LABEL[f.aircraft] ?? f.aircraft}</div>
                     <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{formatTime(f.startedAt)}</div>
+                    <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{f.endAt ? formatTime(f.endAt) : "—"}</div>
                     <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>{formatMins(mins)}</div>
                     <div><StatusBadge status={f.flightStatus} /></div>
                     {f.flightStatus === "PENDING" && (
@@ -771,6 +803,15 @@ export default function FlightsPage() {
                         style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e244", whiteSpace: "nowrap" }}
                       >
                         Editar
+                      </button>
+                    )}
+                    {isLead && f.flightStatus === "REJECTED" && (
+                      <button
+                        onClick={() => setConfirmDeleteId(f.id)}
+                        className="font-mono text-[10px] tracking-[1px] uppercase px-2.5 py-1 rounded"
+                        style={{ background: "#1a0a0a", color: "#e24b4a", border: "1px solid #e24b4a44", whiteSpace: "nowrap" }}
+                      >
+                        Deletar
                       </button>
                     )}
                   </div>

@@ -1,10 +1,10 @@
-export type Role = "TRAINEE" | "PILOT" | "INSTRUCTOR" | "SUPERVISOR" | "LEAD";
+export type Role = "TRAINEE" | "PILOT" | "INSTRUCTOR" | "SUPERVISOR" | "LEAD" | "ADM";
 
 export type PilotStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED" | "TRAINING";
 
 export type FlightStatus = "PENDING" | "APPROVED" | "REJECTED";
 
-export type ReportStatus = "PENDING" | "APPROVED";
+export type ReportStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface AuthUser {
   id: string;
@@ -16,6 +16,7 @@ export interface AuthUser {
 
 export interface Pilot {
   id: string;
+  userId: string;
   fullName: string;
   callsign: string;
   profileImageUrl: string | null;
@@ -24,6 +25,8 @@ export interface Pilot {
   status: PilotStatus;
   discordId: string;
   rankName: string;
+  grupo: string;
+  certifications: string[];
 }
 
 export interface FlightLog {
@@ -70,6 +73,24 @@ export interface Rank {
   name: string;
   hierarchyLevel: number;
   description: string;
+}
+
+export type CertificateType = "PURSUIT" | "OPERATIONAL" | "SCENE_CONTROL" | "COPILOT" | "TRANSPORT";
+export type HolderType     = "MEMBER" | "EXTERNAL";
+
+export interface Certification {
+  id: string;
+  holderType: HolderType;
+  memberId: string | null;
+  memberCallsign: string | null;
+  fullName: string;
+  discordId: string;
+  externalRank: string | null;
+  externalUnit: string | null;
+  certificateType: CertificateType;
+  issuedByCallsign: string;
+  issuedAt: string;
+  notes: string | null;
 }
 
 export interface ApiError {

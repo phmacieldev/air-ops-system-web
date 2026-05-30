@@ -4,14 +4,16 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
-import { LayoutDashboard, Users, Plane, FileText, BookOpen, LogOut, UserPlus } from "lucide-react";
+import { LayoutDashboard, Users, Plane, FileText, BookOpen, LogOut, UserPlus, Award, Settings } from "lucide-react";
 
 const NAV_ITEMS = [
-  { label: "Dashboard",        href: "/dashboard", Icon: LayoutDashboard },
-  { label: "Roster",           href: "/pilots",    Icon: Users            },
-  { label: "Protocolo de Voo", href: "/flights",   Icon: Plane            },
-  { label: "Relatórios",       href: "/reports",   Icon: FileText         },
-  { label: "Documentos",       href: "/documents", Icon: BookOpen         },
+  { label: "Dashboard",        href: "/dashboard",       Icon: LayoutDashboard },
+  { label: "Roster",           href: "/pilots",           Icon: Users            },
+  { label: "Protocolo de Voo", href: "/flights",          Icon: Plane            },
+  { label: "Relatórios",       href: "/reports",          Icon: FileText         },
+  { label: "Certificações",    href: "/certifications",   Icon: Award            },
+  { label: "Documentos",       href: "/documents",        Icon: BookOpen         },
+  { label: "Configurações",    href: "/settings",         Icon: Settings         },
 ];
 
 function NavItem({
@@ -136,7 +138,7 @@ export function Sidebar() {
           />
         ))}
         {/* Admin-only: cadastro de usuário */}
-        {(user?.role === "LEAD" || user?.role === "SUPERVISOR") && (
+        {(user?.role === "LEAD" || user?.role === "SUPERVISOR" || user?.role === "ADM") && (
           <>
             <div className="my-1 mx-3" style={{ borderTop: "1px solid #1c2a3a" }} />
             <NavItem

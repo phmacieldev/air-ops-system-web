@@ -79,6 +79,11 @@ const RANK_COLOR: Record<string, string> = {
 
 const MEDAL_COLORS = ["#e8c97e", "#8a9ab8", "#9a6030", "#3a4a5a"];
 
+const RANK_ORDER: Record<string, number> = {
+  LEAD: 10, SUPERVISOR: 6, INSTRUCTOR: 5,
+  PILOT_SENIOR: 4, PILOT_PLENO: 3, PILOT_STANDARD: 2, PILOT: 2, TRAINEE: 1,
+};
+
 const RANK_LABEL: Record<string, string> = {
   LEAD:           "Lead",
   SUPERVISOR:     "Sup.",
@@ -142,15 +147,16 @@ export default function DashboardPage() {
 
   const pilotByCallsign = new Map(pilots.map((p) => [p.callsign, p]));
 
-  const topPilots = [...pilots]
-    .sort((a, b) =>
-      b.accumulatedScore !== a.accumulatedScore
-        ? b.accumulatedScore - a.accumulatedScore
-        : a.callsign.localeCompare(b.callsign)
-    );
+  const topPilots = [...pilots].sort((a, b) => {
+    if (b.accumulatedScore !== a.accumulatedScore) return b.accumulatedScore - a.accumulatedScore;
+    const ra = RANK_ORDER[a.rankName.toUpperCase()] ?? 0;
+    const rb = RANK_ORDER[b.rankName.toUpperCase()] ?? 0;
+    if (rb !== ra) return rb - ra;
+    return a.callsign.localeCompare(b.callsign);
+  });
 
   const recentFlights = [...flights]
-    .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
     .slice(0, 5);
 
   const statCards = [
@@ -194,7 +200,7 @@ export default function DashboardPage() {
             <div className="font-mono text-3xl font-bold leading-none" style={{ color: accent }}>
               {value}
             </div>
-            <div className="text-[10px] font-mono mt-1.5" style={{ color: "#3a5a7a" }}>
+            <div className="text-[10px] font-mono mt-1.5" style={{ color: "#5a7a9a" }}>
               {sub}
             </div>
           </div>

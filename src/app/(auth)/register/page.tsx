@@ -25,7 +25,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
       </label>
       {children}
       {hint && (
-        <p className="font-mono text-[9px]" style={{ color: "#3a5a7a" }}>{hint}</p>
+        <p className="font-mono text-[9px]" style={{ color: "#5a7a9a" }}>{hint}</p>
       )}
     </div>
   );
@@ -52,9 +52,10 @@ export default function RegisterPage() {
   const [email,        setEmail]        = useState("");
   const [password,     setPassword]     = useState("");
 
-  const [loading, setLoading] = useState(false);
-  const [error,   setError]   = useState<string | null>(null);
-  const [success, setSuccess] = useState(false);
+  const [loading,      setLoading]      = useState(false);
+  const [error,        setError]        = useState<string | null>(null);
+  const [success,      setSuccess]      = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   function onFullNameChange(val: string) {
     setFullName(val);
@@ -145,7 +146,7 @@ export default function RegisterPage() {
                 <input type="url" value={profileImageUrl} onChange={(e) => setProfileImageUrl(e.target.value)}
                   placeholder="https://..." style={inputBase} onFocus={focus} onBlur={blur} />
               </Field>
-              <p className="font-mono text-[9px]" style={{ color: "#3a5a7a" }}>
+              <p className="font-mono text-[9px]" style={{ color: "#5a7a9a" }}>
                 Rank inicial: TRAINEE · Score: 0 · Pode ser alterado no perfil do piloto após o cadastro
               </p>
             </div>
@@ -173,15 +174,26 @@ export default function RegisterPage() {
                   placeholder="henry@email.com" style={inputBase} onFocus={focus} onBlur={blur} />
               </Field>
               <Field label="Senha *">
-                <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)}
-                  placeholder="mín. 6 caracteres" style={inputBase} onFocus={focus} onBlur={blur} />
+                <div className="relative">
+                  <input type={showPassword ? "text" : "password"} required minLength={6} value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="mín. 6 caracteres"
+                    style={{ ...inputBase, paddingRight: "72px" }}
+                    onFocus={focus} onBlur={blur} />
+                  <button type="button" onClick={() => setShowPassword((v) => !v)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[11px] transition-colors"
+                    style={{ color: showPassword ? "#e8c97e" : "#5a7a9a" }}
+                    aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}>
+                    {showPassword ? "ocultar" : "mostrar"}
+                  </button>
+                </div>
               </Field>
             </div>
           </div>
 
           {/* Error / Success */}
           {error && (
-            <div className="font-mono text-[11px] px-3 py-2 rounded"
+            <div role="alert" className="font-mono text-[11px] px-3 py-2 rounded"
               style={{ background: "#2a0a0a", color: "#e24b4a", border: "1px solid #e24b4a33" }}>
               {error}
             </div>

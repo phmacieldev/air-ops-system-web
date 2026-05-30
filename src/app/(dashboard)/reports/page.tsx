@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { FlightLog, PerformanceReport } from "@/types";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 // ── Rank helpers ──────────────────────────────────────────────────────────
 
@@ -41,7 +42,7 @@ function ScoreBar({ pilotRank, pilotAccumulatedScore }: { pilotRank: string; pil
         >
           {pilotRank}
         </span>
-        <span className="text-[9px] font-mono" style={{ color: "#3a5a7a" }}>Score N/A</span>
+        <span className="text-[9px] font-mono" style={{ color: "#5a7a9a" }}>Score N/A</span>
       </div>
     );
   }
@@ -70,17 +71,18 @@ function ScoreBar({ pilotRank, pilotAccumulatedScore }: { pilotRank: string; pil
 }
 
 function StatusBadge({ status }: { status: string }) {
-  const ok = status === "APPROVED";
+  const cfg =
+    status === "APPROVED"
+      ? { label: "Aprovado",  bg: "#0a2a14", color: "#3dd68c", border: "#3dd68c44" }
+      : status === "REJECTED"
+      ? { label: "Rejeitado", bg: "#2a0a0a", color: "#e24b4a", border: "#e24b4a44" }
+      : { label: "Pendente",  bg: "#2a1f0a", color: "#e8c97e", border: "#e8c97e44" };
   return (
     <span
       className="text-[9px] font-mono tracking-[1px] uppercase px-2 py-1 rounded whitespace-nowrap"
-      style={
-        ok
-          ? { background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44" }
-          : { background: "#2a1f0a", color: "#e8c97e", border: "1px solid #e8c97e44" }
-      }
+      style={{ background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}` }}
     >
-      {ok ? "Aprovado" : "Pendente"}
+      {cfg.label}
     </span>
   );
 }
@@ -100,7 +102,7 @@ function Stepper({
 }) {
   return (
     <div className="rounded-lg p-3 space-y-2" style={{ background: "#0a0d12", border: "1px solid #1c2a3a" }}>
-      <div className="text-[10px] font-mono tracking-[1px] uppercase" style={{ color: "#5a7a9a" }}>
+      <div className="text-[10px] font-mono tracking-[1px] uppercase" style={{ color: "#c8d6e5" }}>
         {label}
       </div>
       <div className="font-mono text-3xl font-bold leading-none" style={{ color }}>
@@ -257,13 +259,19 @@ function EditReportModal({
 function ReportCard({
   report,
   canReview,
-  onApprove,
+  canDelete,
+  onReview,
+  onReject,
+  onDelete,
   approving,
   onEdit,
 }: {
   report: PerformanceReport;
   canReview: boolean;
-  onApprove: (id: string) => void;
+  canDelete: boolean;
+  onReview: (id: string, status: "APPROVED" | "REJECTED") => void;
+  onReject: (id: string) => void;
+  onDelete: (id: string) => void;
   approving: string | null;
   onEdit: (r: PerformanceReport) => void;
 }) {
@@ -291,13 +299,32 @@ function ReportCard({
           </button>
         )}
         {canReview && report.status === "PENDING" && (
+          <>
+            <button
+              disabled={busy}
+              onClick={() => onReview(report.id, "APPROVED")}
+              className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-opacity"
+              style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1 }}
+            >
+              {busy ? "..." : "Aprovar"}
+            </button>
+            <button
+              disabled={busy}
+              onClick={() => onReject(report.id)}
+              className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-opacity"
+              style={{ background: "#2a0a0a", color: "#e24b4a", border: "1px solid #e24b4a44", opacity: busy ? 0.5 : 1 }}
+            >
+              {busy ? "..." : "Rejeitar"}
+            </button>
+          </>
+        )}
+        {canDelete && report.status === "REJECTED" && (
           <button
-            disabled={busy}
-            onClick={() => onApprove(report.id)}
-            className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-opacity"
-            style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1 }}
+            onClick={() => onDelete(report.id)}
+            className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded"
+            style={{ background: "#1a0a0a", color: "#e24b4a", border: "1px solid #e24b4a44" }}
           >
-            {busy ? "..." : "Aprovar"}
+            Deletar
           </button>
         )}
       </div>
@@ -323,13 +350,19 @@ function ReportCard({
 function ReportRow({
   report,
   canReview,
-  onApprove,
+  canDelete,
+  onReview,
+  onReject,
+  onDelete,
   approving,
   onEdit,
 }: {
   report: PerformanceReport;
   canReview: boolean;
-  onApprove: (id: string) => void;
+  canDelete: boolean;
+  onReview: (id: string, status: "APPROVED" | "REJECTED") => void;
+  onReject: (id: string) => void;
+  onDelete: (id: string) => void;
   approving: string | null;
   onEdit: (r: PerformanceReport) => void;
 }) {
@@ -373,17 +406,42 @@ function ReportRow({
               Editar
             </button>
             {canReview && (
-              <button
-                disabled={busy}
-                onClick={() => onApprove(report.id)}
-                className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-colors"
-                style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1, whiteSpace: "nowrap" }}
-                onMouseEnter={(e) => { if (!busy) e.currentTarget.style.background = "#0f3d1e"; }}
-                onMouseLeave={(e) => (e.currentTarget.style.background = "#0a2a14")}
-              >
-                {busy ? "..." : "Aprovar"}
-              </button>
+              <>
+                <button
+                  disabled={busy}
+                  onClick={() => onReview(report.id, "APPROVED")}
+                  className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-colors"
+                  style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1, whiteSpace: "nowrap" }}
+                  onMouseEnter={(e) => { if (!busy) e.currentTarget.style.background = "#0f3d1e"; }}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "#0a2a14")}
+                >
+                  {busy ? "..." : "Aprovar"}
+                </button>
+                <button
+                  disabled={busy}
+                  onClick={() => onReject(report.id)}
+                  className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-colors"
+                  style={{ background: "#2a0a0a", color: "#e24b4a", border: "1px solid #e24b4a44", opacity: busy ? 0.5 : 1, whiteSpace: "nowrap" }}
+                  onMouseEnter={(e) => { if (!busy) e.currentTarget.style.background = "#3d0f0f"; }}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "#2a0a0a")}
+                >
+                  {busy ? "..." : "Rejeitar"}
+                </button>
+              </>
             )}
+          </div>
+        )}
+        {canDelete && report.status === "REJECTED" && (
+          <div className="flex items-center gap-2 mt-1">
+            <button
+              onClick={() => onDelete(report.id)}
+              className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-colors"
+              style={{ background: "#1a0a0a", color: "#e24b4a", border: "1px solid #e24b4a44", whiteSpace: "nowrap" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#2a0f0f")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "#1a0a0a")}
+            >
+              Deletar
+            </button>
           </div>
         )}
       </div>
@@ -402,7 +460,9 @@ export default function ReportsPage() {
   const [success, setSuccess]       = useState(false);
   const [error, setError]           = useState<string | null>(null);
 
-  const [approving, setApproving]   = useState<string | null>(null);
+  const [approving, setApproving]             = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId]   = useState<string | null>(null);
+  const [confirmRejectId, setConfirmRejectId]   = useState<string | null>(null);
   const [flightId, setFlightId]     = useState("");
   const [seizures, setSeizures]     = useState(0);
   const [chases, setChases]         = useState(0);
@@ -426,7 +486,8 @@ export default function ReportsPage() {
     }).finally(() => setLoading(false));
   }, []);
 
-  const canReview  = user?.role === "LEAD" || user?.role === "SUPERVISOR";
+  const canReview  = user?.role === "LEAD" || user?.role === "SUPERVISOR" || user?.role === "ADM";
+  const canDelete  = user?.role === "LEAD" || user?.role === "ADM";
   const previewScore = seizures * 5 + chases * 3 + operations * 3 - accidents * 5;
 
   const [filterSearch, setFilterSearch] = useState("");
@@ -439,16 +500,26 @@ export default function ReportsPage() {
     return matchSearch && matchStatus;
   });
 
-  async function approveReport(id: string) {
+  async function reviewReport(id: string, status: "APPROVED" | "REJECTED") {
     if (!user) return;
     setApproving(id);
     try {
       const updated = await api.post<PerformanceReport>(`/reports/${id}/review`, {
         reviewerEmail: user.email,
+        status,
       });
       setReports((prev) => prev.map((r) => (r.id === id ? updated : r)));
     } catch { /* silently ignore */ }
     finally { setApproving(null); }
+  }
+
+  async function deleteReport(id: string) {
+    if (!canDelete) return;
+    try {
+      await api.delete(`/reports/${id}`);
+      setReports((prev) => prev.filter((r) => r.id !== id));
+    } catch { /* silently ignore */ }
+    finally { setConfirmDeleteId(null); }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -495,6 +566,27 @@ export default function ReportsPage() {
         />
       )}
 
+      {/* Confirm delete modal */}
+      <ConfirmModal
+        open={!!confirmDeleteId}
+        title="Deletar Relatório"
+        description="Este relatório rejeitado será removido permanentemente. Esta ação não pode ser desfeita."
+        confirmLabel="Deletar"
+        onConfirm={() => confirmDeleteId && deleteReport(confirmDeleteId)}
+        onCancel={() => setConfirmDeleteId(null)}
+      />
+
+      {/* Confirm reject modal */}
+      <ConfirmModal
+        open={!!confirmRejectId}
+        title="Rejeitar Relatório"
+        description="O relatório será marcado como rejeitado. O piloto não receberá os pontos desta missão."
+        confirmLabel="Rejeitar"
+        variant="warning"
+        onConfirm={() => { confirmRejectId && reviewReport(confirmRejectId, "REJECTED"); setConfirmRejectId(null); }}
+        onCancel={() => setConfirmRejectId(null)}
+      />
+
       {/* Page header */}
       <div className="flex items-start md:items-center justify-between gap-3">
         <div>
@@ -528,7 +620,7 @@ export default function ReportsPage() {
 
               {/* Voo */}
               <div>
-                <label className="block text-[10px] font-mono tracking-[1.5px] uppercase mb-1" style={{ color: "#5a7a9a" }}>
+                <label className="block text-[10px] font-mono tracking-[1.5px] uppercase mb-1" style={{ color: "#c8d6e5" }}>
                   Voo (aprovado)
                 </label>
                 <select
@@ -627,7 +719,7 @@ export default function ReportsPage() {
                 </div>
               </div>
 
-              <div className="text-[9px] font-mono tracking-[1px] uppercase text-center" style={{ color: "#3a5a7a" }}>
+              <div className="text-[9px] font-mono tracking-[1px] uppercase text-center" style={{ color: "#5a7a9a" }}>
                 Score = Apreensões ×5 + Perseguições ×3 + Ops ×3 − Acidentes ×5
               </div>
             </div>
@@ -669,6 +761,7 @@ export default function ReportsPage() {
               <option value="">Todos os status</option>
               <option value="PENDING">Pendente</option>
               <option value="APPROVED">Aprovado</option>
+              <option value="REJECTED">Rejeitado</option>
             </select>
             {(filterSearch || filterStatus) && (
               <button
@@ -697,7 +790,7 @@ export default function ReportsPage() {
             <div className="hidden md:block">
               <div className="grid gap-x-4 px-4 py-2" style={{ gridTemplateColumns: "1.2fr 0.55fr 0.65fr 0.55fr 0.55fr 1.8fr 200px", borderBottom: "1px solid #1c2a3a" }}>
                 {["Piloto", "Apreens.", "Perseg.", "Ops", "Acid.", "Score", "Status"].map((h, i) => (
-                  <div key={h} className={`text-[9px] font-mono tracking-[1.5px] uppercase ${i >= 1 && i <= 4 ? "text-center" : ""}`} style={{ color: "#5a7a9a" }}>{h}</div>
+                  <div key={h} className={`text-[9px] font-mono tracking-[1.5px] uppercase ${i >= 1 && i <= 4 ? "text-center" : ""}`} style={{ color: "#8a9ab8" }}>{h}</div>
                 ))}
               </div>
               {filteredReports.map((r) => (
@@ -705,7 +798,10 @@ export default function ReportsPage() {
                   key={r.id}
                   report={r}
                   canReview={canReview}
-                  onApprove={approveReport}
+                  canDelete={canDelete}
+                  onReview={reviewReport}
+                  onReject={setConfirmRejectId}
+                  onDelete={setConfirmDeleteId}
                   approving={approving}
                   onEdit={setEditingReport}
                 />
@@ -717,7 +813,10 @@ export default function ReportsPage() {
                   key={r.id}
                   report={r}
                   canReview={canReview}
-                  onApprove={approveReport}
+                  canDelete={canDelete}
+                  onReview={reviewReport}
+                  onReject={setConfirmRejectId}
+                  onDelete={setConfirmDeleteId}
                   approving={approving}
                   onEdit={setEditingReport}
                 />

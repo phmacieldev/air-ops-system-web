@@ -5,6 +5,33 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Pilot, PerformanceReport } from "@/types";
 
+const MEMBER_CERTS = ["PURSUIT", "OPERATIONAL", "SCENE_CONTROL"];
+
+const CERT_STYLES: Record<string, { label: string; bg: string; color: string; border: string }> = {
+  PURSUIT:       { label: "Pursuit",    bg: "#0a1f2a", color: "#4a90e2", border: "#4a90e244" },
+  OPERATIONAL:   { label: "Oper.",      bg: "#0a2a14", color: "#3dd68c", border: "#3dd68c44" },
+  SCENE_CONTROL: { label: "Cena",       bg: "#2a1f0a", color: "#e8c97e", border: "#e8c97e44" },
+};
+
+function CertBadges({ certs }: { certs: string[] }) {
+  const visible = certs.filter((c) => MEMBER_CERTS.includes(c));
+  if (visible.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-1 mt-1">
+      {visible.map((c) => {
+        const s = CERT_STYLES[c];
+        if (!s) return null;
+        return (
+          <span key={c} className="text-[8px] font-mono tracking-[0.5px] uppercase px-1.5 py-0.5 rounded"
+            style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
+            {s.label}
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
 const RANK_ORDER: Record<string, number> = {
   LEAD: 10, SUPERVISOR: 6, INSTRUCTOR: 5,
   PILOT_SENIOR: 4, PILOT_PLENO: 3, PILOT_STANDARD: 2, TRAINEE: 1,
@@ -92,6 +119,7 @@ export default function PilotsPage() {
     }, {});
 
   const sorted = [...pilots].sort((a, b) => {
+    if (b.accumulatedScore !== a.accumulatedScore) return b.accumulatedScore - a.accumulatedScore;
     const ra = RANK_ORDER[a.rankName.toUpperCase()] ?? 0;
     const rb = RANK_ORDER[b.rankName.toUpperCase()] ?? 0;
     if (rb !== ra) return rb - ra;
@@ -145,7 +173,7 @@ export default function PilotsPage() {
         <div
           className="hidden md:grid px-4 py-2 text-[9px] font-mono tracking-[1.5px] uppercase"
           style={{
-            color: "#3a5a7a",
+            color: "#8a9ab8",
             borderBottom: "1px solid #1c2a3a",
             gridTemplateColumns: "40px 1fr 1.5fr 1.2fr 0.8fr 0.8fr 0.8fr 1fr",
             gap: "12px",
@@ -193,9 +221,10 @@ export default function PilotsPage() {
                   {/* Avatar */}
                   <Avatar pilot={p} size={32} />
 
-                  {/* Callsign */}
-                  <div className="font-mono text-sm font-bold truncate" style={{ color: rs.color }}>
-                    {p.callsign}
+                  {/* Callsign + certs */}
+                  <div>
+                    <div className="font-mono text-sm font-bold truncate" style={{ color: rs.color }}>{p.callsign}</div>
+                    <CertBadges certs={p.certifications} />
                   </div>
 
                   {/* Nome */}
@@ -248,6 +277,7 @@ export default function PilotsPage() {
                       </span>
                     </div>
                     <div className="font-mono text-[11px] truncate mt-0.5" style={{ color: "#5a7a9a" }}>{p.fullName}</div>
+                    <CertBadges certs={p.certifications} />
                     <div className="flex items-center gap-3 mt-1 font-mono text-[11px]">
                       <span style={{ color: "#c8d6e5" }}>{p.accumulatedScore} pts</span>
                       <span style={{ color: "#5a7a9a" }}>{formatHours(p.flightMinutes)}</span>

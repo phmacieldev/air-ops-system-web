@@ -111,7 +111,7 @@ function DocCard({ doc }: { doc: typeof DOCS[number] }) {
         </span>
         <ExternalLink
           className="w-3.5 h-3.5 transition-colors"
-          style={{ color: hovered ? doc.accent : "#3a5a7a" }}
+          style={{ color: hovered ? doc.accent : "#5a7a9a" }}
         />
       </div>
     </a>

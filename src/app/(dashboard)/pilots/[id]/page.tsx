@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { Pilot, FlightLog, PerformanceReport, Rank } from "@/types";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -78,11 +79,13 @@ function EditModal({
   onConfirm,
   onClose,
   saving,
+  showStatus = true,
 }: {
   pilot: Pilot;
   onConfirm: (data: { callsign: string; profileImageUrl: string; status: string }) => void;
   onClose: () => void;
   saving: boolean;
+  showStatus?: boolean;
 }) {
   const [callsign,        setCallsign]        = useState<string>(pilot.callsign);
   const [profileImageUrl, setProfileImageUrl] = useState<string>(pilot.profileImageUrl ?? "");
@@ -109,22 +112,24 @@ function EditModal({
         </div>
         <div className="p-4 space-y-3">
           <div className="space-y-1">
-            <label className="block font-mono text-[10px] tracking-[1.5px] uppercase" style={{ color: "#5a7a9a" }}>Callsign</label>
+            <label className="block font-mono text-[10px] tracking-[1.5px] uppercase" style={{ color: "#c8d6e5" }}>Callsign</label>
             <input type="text" value={callsign} onChange={(e) => setCallsign(e.target.value)}
               style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
           </div>
+          {showStatus && (
+            <div className="space-y-1">
+              <label className="block font-mono text-[10px] tracking-[1.5px] uppercase" style={{ color: "#c8d6e5" }}>Status</label>
+              <select value={status} onChange={(e) => setStatus(e.target.value)}
+                style={{ ...inputStyle, cursor: "pointer" }} onFocus={focusBorder} onBlur={blurBorder}>
+                <option value="ACTIVE">Ativo</option>
+                <option value="INACTIVE">Inativo</option>
+                <option value="SUSPENDED">Suspenso</option>
+                <option value="TRAINING">Treinamento</option>
+              </select>
+            </div>
+          )}
           <div className="space-y-1">
-            <label className="block font-mono text-[10px] tracking-[1.5px] uppercase" style={{ color: "#5a7a9a" }}>Status</label>
-            <select value={status} onChange={(e) => setStatus(e.target.value)}
-              style={{ ...inputStyle, cursor: "pointer" }} onFocus={focusBorder} onBlur={blurBorder}>
-              <option value="ACTIVE">Ativo</option>
-              <option value="INACTIVE">Inativo</option>
-              <option value="SUSPENDED">Suspenso</option>
-              <option value="TRAINING">Treinamento</option>
-            </select>
-          </div>
-          <div className="space-y-1">
-            <label className="block font-mono text-[10px] tracking-[1.5px] uppercase" style={{ color: "#5a7a9a" }}>
+            <label className="block font-mono text-[10px] tracking-[1.5px] uppercase" style={{ color: "#c8d6e5" }}>
               URL da foto (opcional)
             </label>
             <input type="url" value={profileImageUrl} onChange={(e) => setProfileImageUrl(e.target.value)}
@@ -256,11 +261,15 @@ export default function PilotProfilePage() {
   const [reports,  setReports]  = useState<PerformanceReport[]>([]);
   const [ranks,    setRanks]    = useState<Rank[]>([]);
   const [loading,  setLoading]  = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [showEdit,  setShowEdit]  = useState(false);
-  const [saving,    setSaving]    = useState(false);
+  const [showModal,      setShowModal]      = useState(false);
+  const [showEdit,       setShowEdit]       = useState(false);
+  const [showOwnEdit,    setShowOwnEdit]    = useState(false);
+  const [confirmDelete,  setConfirmDelete]  = useState(false);
+  const [saving,         setSaving]         = useState(false);
 
-  const canManage = user?.role === "LEAD" || user?.role === "SUPERVISOR";
+  const canManage    = user?.role === "LEAD" || user?.role === "SUPERVISOR" || user?.role === "ADM";
+  const canDelete    = user?.role === "LEAD" || user?.role === "ADM";
+  const isOwnProfile = !!pilot && user?.id === pilot.userId;
 
   useEffect(() => {
     if (!id) return;
@@ -283,7 +292,7 @@ export default function PilotProfilePage() {
     if (!pilot) return;
     setSaving(true);
     try {
-      const updated = await api.put<Pilot>(`/pilots/${pilot.id}`, { rankId });
+      const updated = await api.patch<Pilot>(`/pilots/${pilot.id}/rank`, { rankId });
       setPilot(updated);
       setShowModal(false);
     } catch { /* silently ignore */ }
@@ -303,6 +312,29 @@ export default function PilotProfilePage() {
       setShowEdit(false);
     } catch { /* silently ignore */ }
     finally { setSaving(false); }
+  }
+
+  async function saveOwnProfile(data: { callsign: string; profileImageUrl: string; status: string }) {
+    if (!pilot) return;
+    setSaving(true);
+    try {
+      const updated = await api.patch<Pilot>(`/pilots/${pilot.id}/profile`, {
+        callsign:        data.callsign,
+        profileImageUrl: data.profileImageUrl || null,
+      });
+      setPilot(updated);
+      setShowOwnEdit(false);
+    } catch { /* silently ignore */ }
+    finally { setSaving(false); }
+  }
+
+  async function deletePilot() {
+    if (!pilot) return;
+    try {
+      await api.delete(`/pilots/${pilot.id}`);
+      router.push("/pilots");
+    } catch { /* silently ignore */ }
+    finally { setConfirmDelete(false); }
   }
 
   if (loading) {
@@ -351,6 +383,25 @@ export default function PilotProfilePage() {
           saving={saving}
         />
       )}
+
+      {showOwnEdit && (
+        <EditModal
+          pilot={pilot}
+          onConfirm={saveOwnProfile}
+          onClose={() => setShowOwnEdit(false)}
+          saving={saving}
+          showStatus={false}
+        />
+      )}
+
+      <ConfirmModal
+        open={confirmDelete}
+        title="Remover Piloto"
+        description={`O piloto ${pilot.callsign} e todos os seus dados serão removidos permanentemente. Esta ação não pode ser desfeita.`}
+        confirmLabel="Remover"
+        onConfirm={deletePilot}
+        onCancel={() => setConfirmDelete(false)}
+      />
 
       {/* Back */}
       <button onClick={() => router.back()}
@@ -412,6 +463,14 @@ export default function PilotProfilePage() {
             <div className="font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#5a7a9a" }}>Voos</div>
             <div className="font-mono text-xl font-bold" style={{ color: "#3dd68c" }}>{flights.length}</div>
           </div>
+          {isOwnProfile && !canManage && (
+            <button onClick={() => setShowOwnEdit(true)}
+              className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-2 rounded mt-1"
+              style={{ background: "#1c2a3a", color: "#4a90e2", border: "1px solid #4a90e233" }}>
+              Editar Meu Perfil
+            </button>
+          )}
+
           {canManage && (
             <>
               <button onClick={() => setShowModal(true)}
@@ -424,6 +483,13 @@ export default function PilotProfilePage() {
                 style={{ background: "#1c2a3a", color: "#4a90e2", border: "1px solid #4a90e233" }}>
                 Editar Perfil
               </button>
+              {canDelete && (
+                <button onClick={() => setConfirmDelete(true)}
+                  className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-2 rounded"
+                  style={{ background: "#1a0a0a", color: "#e24b4a", border: "1px solid #e24b4a33" }}>
+                  Remover Piloto
+                </button>
+              )}
             </>
           )}
         </div>
@@ -443,7 +509,7 @@ export default function PilotProfilePage() {
           ) : (
             <div>
               <div className="grid gap-x-3 px-4 py-1.5 text-[9px] font-mono tracking-[1.5px] uppercase"
-                style={{ gridTemplateColumns: "0.9fr 1.2fr 0.7fr 0.6fr", borderBottom: "1px solid #1c2a3a", color: "#5a7a9a" }}>
+                style={{ gridTemplateColumns: "0.9fr 1.2fr 0.7fr 0.6fr", borderBottom: "1px solid #1c2a3a", color: "#8a9ab8" }}>
                 {["Data", "Tipo", "Aeronave", "Status"].map(h => <div key={h}>{h}</div>)}
               </div>
               {flights.slice(0, 10).map((f) => (
@@ -451,7 +517,7 @@ export default function PilotProfilePage() {
                   style={{ gridTemplateColumns: "0.9fr 1.2fr 0.7fr 0.6fr", borderBottom: "1px solid #111823" }}>
                   <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>
                     {formatDate(f.startedAt)}<br />
-                    <span style={{ color: "#3a5a7a" }}>{formatDuration(f.startedAt, f.endAt)}</span>
+                    <span style={{ color: "#5a7a9a" }}>{formatDuration(f.startedAt, f.endAt)}</span>
                   </div>
                   <div className="font-mono text-[11px]" style={{ color: "#c8d6e5" }}>
                     {FLIGHT_TYPE_LABELS[f.flightType] ?? f.flightType}
@@ -461,7 +527,7 @@ export default function PilotProfilePage() {
                 </div>
               ))}
               {flights.length > 10 && (
-                <div className="px-4 py-2 text-center font-mono text-[10px]" style={{ color: "#3a5a7a" }}>
+                <div className="px-4 py-2 text-center font-mono text-[10px]" style={{ color: "#5a7a9a" }}>
                   +{flights.length - 10} voos anteriores
                 </div>
               )}
@@ -480,7 +546,7 @@ export default function PilotProfilePage() {
           ) : (
             <div>
               <div className="grid gap-x-3 px-4 py-1.5 text-[9px] font-mono tracking-[1.5px] uppercase"
-                style={{ gridTemplateColumns: "0.8fr 0.5fr 0.5fr 0.5fr 0.5fr 0.7fr 0.7fr", borderBottom: "1px solid #1c2a3a", color: "#5a7a9a" }}>
+                style={{ gridTemplateColumns: "0.8fr 0.5fr 0.5fr 0.5fr 0.5fr 0.7fr 0.7fr", borderBottom: "1px solid #1c2a3a", color: "#8a9ab8" }}>
                 {["Data", "Aprs", "Pers", "Ops", "Acid", "Score", "Status"].map(h => <div key={h}>{h}</div>)}
               </div>
               {reports.slice(0, 10).map((r) => (
@@ -496,7 +562,7 @@ export default function PilotProfilePage() {
                 </div>
               ))}
               {reports.length > 10 && (
-                <div className="px-4 py-2 text-center font-mono text-[10px]" style={{ color: "#3a5a7a" }}>
+                <div className="px-4 py-2 text-center font-mono text-[10px]" style={{ color: "#5a7a9a" }}>
                   +{reports.length - 10} relatórios anteriores
                 </div>
               )}
