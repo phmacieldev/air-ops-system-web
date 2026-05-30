@@ -343,6 +343,7 @@ export default function FlightsPage() {
   const [reviewing, setReviewing]           = useState<string | null>(null);
   const [editingFlight, setEditingFlight]   = useState<FlightLog | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [deleteError, setDeleteError]         = useState<string | null>(null);
 
   const today   = new Date().toISOString().split("T")[0];
   const timeNow = new Date().toTimeString().slice(0, 5);
@@ -379,8 +380,11 @@ export default function FlightsPage() {
     try {
       await api.delete(`/flights/${id}`);
       setFlights((prev) => prev.filter((f) => f.id !== id));
-    } catch { /* silently ignore */ }
-    finally { setConfirmDeleteId(null); }
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : "Erro ao deletar protocolo.");
+    } finally {
+      setConfirmDeleteId(null);
+    }
   }
   const pendingFlights = flights.filter((f) => f.flightStatus === "PENDING");
 
@@ -766,6 +770,14 @@ export default function FlightsPage() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {deleteError && (
+        <div role="alert" className="font-mono text-[11px] px-4 py-2.5 rounded-lg flex items-center justify-between"
+          style={{ background: "#2a0a0a", color: "#e24b4a", border: "1px solid #e24b4a33" }}>
+          <span>{deleteError}</span>
+          <button onClick={() => setDeleteError(null)} className="ml-4 opacity-60 hover:opacity-100">×</button>
         </div>
       )}
 
