@@ -16,14 +16,62 @@ const CERT_META: Record<CertificateType, { label: string; bg: string; color: str
   TRANSPORT:     { label: "Transporte",    bg: "#1a1c2a", color: "#8a9ab8", border: "#4a5a7a44", forExternal: true },
 };
 
-function CertBadge({ type }: { type: CertificateType }) {
-  const m = CERT_META[type];
+function RevokableBadge({ cert, onRevoke, canDelete }: {
+  cert: Certification;
+  onRevoke: (id: string) => void;
+  canDelete: boolean;
+}) {
+  const m = CERT_META[cert.certificateType];
   return (
-    <span className="text-[9px] font-mono tracking-[0.5px] uppercase px-2 py-0.5 rounded whitespace-nowrap"
+    <span
+      title={`Emitido por ${cert.issuedByCallsign} em ${formatDate(cert.issuedAt)}`}
+      className="inline-flex items-center gap-1 text-[9px] font-mono tracking-[0.5px] uppercase px-2 py-0.5 rounded whitespace-nowrap"
       style={{ background: m.bg, color: m.color, border: `1px solid ${m.border}` }}>
       {m.label}
+      {canDelete && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onRevoke(cert.id); }}
+          className="leading-none opacity-50 hover:opacity-100 transition-opacity ml-0.5"
+          style={{ color: m.color }}>
+          ×
+        </button>
+      )}
     </span>
   );
+}
+
+// ── Grouping ──────────────────────────────────────────────────────────────
+
+type CertGroup = {
+  key: string;
+  callsign: string | null;
+  fullName: string;
+  discordId: string;
+  externalRank: string | null;
+  externalUnit: string | null;
+  certs: Certification[];
+};
+
+function groupCerts(certs: Certification[], tab: HolderType): CertGroup[] {
+  const map = new Map<string, CertGroup>();
+  for (const cert of certs) {
+    const key = tab === "MEMBER"
+      ? (cert.memberId ?? cert.memberCallsign ?? cert.discordId)
+      : cert.discordId;
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        callsign: cert.memberCallsign,
+        fullName: cert.fullName,
+        discordId: cert.discordId,
+        externalRank: cert.externalRank,
+        externalUnit: cert.externalUnit,
+        certs: [],
+      });
+    }
+    map.get(key)!.certs.push(cert);
+  }
+  return Array.from(map.values());
 }
 
 function formatDate(iso: string) {
@@ -42,25 +90,25 @@ function IssueModal({
   pilots,
 }: {
   onClose: () => void;
-  onIssued: (c: Certification) => void;
+  onIssued: (certs: Certification[]) => void;
   issuerEmail: string;
   pilots: Pilot[];
 }) {
-  const [holderType, setHolderType] = useState<HolderType>("MEMBER");
-  const [memberId,    setMemberId]    = useState("");
-  const [fullName,    setFullName]    = useState("");
-  const [discordId,   setDiscordId]   = useState("");
-  const [extRank,     setExtRank]     = useState("");
-  const [extUnit,     setExtUnit]     = useState("");
-  const [certType,    setCertType]    = useState<CertificateType>("PURSUIT");
-  const [notes,       setNotes]       = useState("");
-  const [saving,      setSaving]      = useState(false);
-  const [error,       setError]       = useState<string | null>(null);
+  const [holderType,     setHolderType]     = useState<HolderType>("MEMBER");
+  const [memberId,       setMemberId]       = useState("");
+  const [fullName,       setFullName]       = useState("");
+  const [discordId,      setDiscordId]      = useState("");
+  const [extRank,        setExtRank]        = useState("");
+  const [extUnit,        setExtUnit]        = useState("");
+  const [selectedTypes,  setSelectedTypes]  = useState<Set<CertificateType>>(new Set());
+  const [notes,          setNotes]          = useState("");
+  const [saving,         setSaving]         = useState(false);
+  const [error,          setError]          = useState<string | null>(null);
 
   const certOptions = holderType === "MEMBER" ? MEMBER_TYPES : EXTERNAL_TYPES;
 
   useEffect(() => {
-    setCertType(certOptions[0]);
+    setSelectedTypes(new Set());
   }, [holderType]);
 
   useEffect(() => {
@@ -73,23 +121,36 @@ function IssueModal({
     }
   }, [memberId, holderType, pilots]);
 
+  function toggleType(t: CertificateType) {
+    setSelectedTypes((prev) => {
+      const next = new Set(prev);
+      if (next.has(t)) next.delete(t); else next.add(t);
+      return next;
+    });
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (selectedTypes.size === 0) return;
     setSaving(true);
     setError(null);
     try {
-      const created = await api.post<Certification>("/certifications", {
-        holderType,
-        memberId:      holderType === "MEMBER" ? memberId || null : null,
-        fullName,
-        discordId,
-        externalRank:  extRank || null,
-        externalUnit:  extUnit || null,
-        certificateType: certType,
-        issuedByEmail: issuerEmail,
-        notes:         notes || null,
-      });
-      onIssued(created);
+      const results = await Promise.all(
+        Array.from(selectedTypes).map((certType) =>
+          api.post<Certification>("/certifications", {
+            holderType,
+            memberId:        holderType === "MEMBER" ? memberId || null : null,
+            fullName,
+            discordId,
+            externalRank:    extRank || null,
+            externalUnit:    extUnit || null,
+            certificateType: certType,
+            issuedByEmail:   issuerEmail,
+            notes:           notes || null,
+          })
+        )
+      );
+      onIssued(results);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao emitir certificação");
     } finally {
@@ -174,18 +235,25 @@ function IssueModal({
             </div>
           )}
 
-          {/* Tipo de certificado */}
+          {/* Tipos de certificado — multi-select */}
           <div className="space-y-1">
-            <label className="block font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#5a7a9a" }}>Certificado *</label>
+            <label className="block font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#c8d6e5" }}>
+              Certificados *
+              {selectedTypes.size > 0 && (
+                <span className="ml-2 normal-case tracking-normal" style={{ color: "#5a7a9a" }}>
+                  ({selectedTypes.size} selecionado{selectedTypes.size > 1 ? "s" : ""})
+                </span>
+              )}
+            </label>
             <div className="flex flex-wrap gap-2">
               {certOptions.map((t) => {
                 const m = CERT_META[t];
-                const active = certType === t;
+                const active = selectedTypes.has(t);
                 return (
-                  <button key={t} type="button" onClick={() => setCertType(t)}
+                  <button key={t} type="button" onClick={() => toggleType(t)}
                     className="text-[9px] font-mono tracking-[0.5px] uppercase px-3 py-1.5 rounded transition-colors"
                     style={{
-                      background: active ? m.bg : "#0a1117",
+                      background: active ? m.bg    : "#0a1117",
                       color:      active ? m.color : "#5a7a9a",
                       border:     `1px solid ${active ? m.border : "#1c2a3a"}`,
                     }}>
@@ -216,10 +284,17 @@ function IssueModal({
               style={{ background: "#0a1628", color: "#5a7a9a", border: "1px solid #1c2a3a" }}>
               Cancelar
             </button>
-            <button type="submit" disabled={saving}
+            <button type="submit" disabled={saving || selectedTypes.size === 0}
               className="flex-1 font-mono text-[11px] tracking-[1px] uppercase py-2.5 rounded font-bold"
-              style={{ background: "#2a1f0a", color: "#e8c97e", border: "1px solid #e8c97e44", opacity: saving ? 0.6 : 1 }}>
-              {saving ? "Emitindo..." : "Emitir"}
+              style={{
+                background: "#2a1f0a", color: "#e8c97e", border: "1px solid #e8c97e44",
+                opacity: (saving || selectedTypes.size === 0) ? 0.4 : 1,
+              }}>
+              {saving
+                ? "Emitindo..."
+                : selectedTypes.size > 1
+                  ? `Emitir ${selectedTypes.size} certificados`
+                  : "Emitir"}
             </button>
           </div>
         </form>
@@ -258,11 +333,13 @@ export default function CertificationsPage() {
     finally { setConfirmDeleteId(null); }
   }
 
-  const filtered = certs.filter((c) => {
-    if (c.holderType !== tab) return false;
+  const groups = groupCerts(
+    certs.filter((c) => c.holderType === tab),
+    tab,
+  ).filter((g) => {
     const q = search.toLowerCase();
-    return !q || c.fullName.toLowerCase().includes(q) || c.discordId.toLowerCase().includes(q) ||
-      (c.memberCallsign?.toLowerCase().includes(q) ?? false);
+    return !q || g.fullName.toLowerCase().includes(q) || g.discordId.toLowerCase().includes(q) ||
+      (g.callsign?.toLowerCase().includes(q) ?? false);
   });
 
   return (
@@ -273,7 +350,7 @@ export default function CertificationsPage() {
           issuerEmail={user!.email}
           pilots={pilots}
           onClose={() => setShowIssue(false)}
-          onIssued={(c) => { setCerts((prev) => [c, ...prev]); setShowIssue(false); }}
+          onIssued={(created) => { setCerts((prev) => [...created, ...prev]); setShowIssue(false); }}
         />
       )}
 
@@ -333,12 +410,12 @@ export default function CertificationsPage() {
         {/* Header */}
         <div className="hidden md:grid px-4 py-2 text-[9px] font-mono tracking-[1.5px] uppercase"
           style={{
-            gridTemplateColumns: tab === "MEMBER" ? "1fr 1fr 1fr 0.8fr auto" : "1fr 1fr 1fr 1fr 1fr auto",
+            gridTemplateColumns: tab === "MEMBER" ? "0.8fr 1fr 1fr 1.4fr" : "1fr 1fr 1fr 1.4fr",
             borderBottom: "1px solid #1c2a3a", color: "#8a9ab8",
           }}>
           {tab === "MEMBER"
-            ? ["Callsign", "Nome", "Discord", "Certificado", ""].map((h, i) => <div key={i}>{h}</div>)
-            : ["Nome", "Discord", "Patente/Unidade", "Certificado", "Emitido em", ""].map((h, i) => <div key={i}>{h}</div>)
+            ? ["Callsign", "Nome", "Certificações"].map((h, i) => <div key={i}>{h}</div>)
+            : ["Nome", "Discord", "Patente / Unidade", "Certificações"].map((h, i) => <div key={i}>{h}</div>)
           }
         </div>
 
@@ -346,50 +423,44 @@ export default function CertificationsPage() {
           <div className="px-4 py-8 text-center font-mono text-[11px] tracking-[2px] uppercase animate-pulse" style={{ color: "#5a7a9a" }}>
             Carregando...
           </div>
-        ) : filtered.length === 0 ? (
+        ) : groups.length === 0 ? (
           <div className="px-4 py-8 text-center font-mono text-[11px] tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
             Nenhuma certificação encontrada
           </div>
         ) : (
-          filtered.map((c) => (
-            <div key={c.id}>
+          groups.map((g) => (
+            <div key={g.key}>
               {/* Desktop */}
               <div className="hidden md:grid px-4 py-3 items-center transition-colors"
                 style={{
-                  gridTemplateColumns: tab === "MEMBER" ? "1fr 1fr 1fr 0.8fr auto" : "1fr 1fr 1fr 1fr 1fr auto",
+                  gridTemplateColumns: tab === "MEMBER" ? "0.8fr 1.2fr 1.6fr" : "1fr 1fr 1fr 1.4fr",
                   borderBottom: "1px solid #111823",
                 }}
                 onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
                 onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                 {tab === "MEMBER" ? (
                   <>
-                    <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>{c.memberCallsign ?? "—"}</div>
-                    <div className="font-mono text-[11px]" style={{ color: "#c8d6e5" }}>{c.fullName}</div>
-                    <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{c.discordId}</div>
-                    <CertBadge type={c.certificateType} />
+                    <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>{g.callsign ?? "—"}</div>
+                    <div className="font-mono text-[11px]" style={{ color: "#c8d6e5" }}>{g.fullName}</div>
                   </>
                 ) : (
                   <>
-                    <div className="font-mono text-sm font-bold" style={{ color: "#c8d6e5" }}>{c.fullName}</div>
-                    <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{c.discordId}</div>
+                    <div className="font-mono text-sm font-bold" style={{ color: "#c8d6e5" }}>{g.fullName}</div>
+                    <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{g.discordId}</div>
                     <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>
-                      {[c.externalRank, c.externalUnit].filter(Boolean).join(" · ") || "—"}
+                      {[g.externalRank, g.externalUnit].filter(Boolean).join(" · ") || "—"}
                     </div>
-                    <CertBadge type={c.certificateType} />
-                    <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{formatDate(c.issuedAt)}</div>
                   </>
                 )}
-                <div className="flex items-center justify-end gap-2">
-                  <div className="font-mono text-[10px]" style={{ color: "#5a7a9a" }}>
-                    {tab === "MEMBER" ? formatDate(c.issuedAt) : `por ${c.issuedByCallsign}`}
-                  </div>
-                  {canDelete && (
-                    <button onClick={() => setConfirmDeleteId(c.id)}
-                      className="font-mono text-[9px] tracking-[0.5px] uppercase px-2 py-1 rounded"
-                      style={{ background: "#1a0a0a", color: "#e24b4a", border: "1px solid #e24b4a33" }}>
-                      Revogar
-                    </button>
-                  )}
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  {g.certs.map((cert) => (
+                    <RevokableBadge
+                      key={cert.id}
+                      cert={cert}
+                      canDelete={canDelete}
+                      onRevoke={setConfirmDeleteId}
+                    />
+                  ))}
                 </div>
               </div>
 
@@ -397,23 +468,24 @@ export default function CertificationsPage() {
               <div className="md:hidden flex items-center gap-3 px-4 py-3"
                 style={{ borderBottom: "1px solid #111823" }}>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-mono text-sm font-bold" style={{ color: tab === "MEMBER" ? "#e8c97e" : "#c8d6e5" }}>
-                      {tab === "MEMBER" ? (c.memberCallsign ?? c.fullName) : c.fullName}
-                    </span>
-                    <CertBadge type={c.certificateType} />
+                  <div className="font-mono text-sm font-bold mb-1" style={{ color: tab === "MEMBER" ? "#e8c97e" : "#c8d6e5" }}>
+                    {tab === "MEMBER" ? (g.callsign ?? g.fullName) : g.fullName}
                   </div>
-                  <div className="font-mono text-[10px] mt-0.5" style={{ color: "#5a7a9a" }}>
-                    {c.discordId} · {formatDate(c.issuedAt)}
+                  {tab === "MEMBER"
+                    ? <div className="font-mono text-[10px] mb-1.5" style={{ color: "#5a7a9a" }}>{g.fullName}</div>
+                    : <div className="font-mono text-[10px] mb-1.5" style={{ color: "#5a7a9a" }}>{g.discordId}</div>
+                  }
+                  <div className="flex flex-wrap gap-1.5">
+                    {g.certs.map((cert) => (
+                      <RevokableBadge
+                        key={cert.id}
+                        cert={cert}
+                        canDelete={canDelete}
+                        onRevoke={setConfirmDeleteId}
+                      />
+                    ))}
                   </div>
                 </div>
-                {canDelete && (
-                  <button onClick={() => setConfirmDeleteId(c.id)}
-                    className="font-mono text-[9px] tracking-[0.5px] uppercase px-2 py-1 rounded shrink-0"
-                    style={{ background: "#1a0a0a", color: "#e24b4a", border: "1px solid #e24b4a33" }}>
-                    Revogar
-                  </button>
-                )}
               </div>
             </div>
           ))
