@@ -46,7 +46,8 @@ type CertGroup = {
   key: string;
   callsign: string | null;
   fullName: string;
-  discordId: string;
+  discordId: string | null;
+  externalCallsign: string | null;
   externalRank: string | null;
   externalUnit: string | null;
   certs: Certification[];
@@ -56,14 +57,15 @@ function groupCerts(certs: Certification[], tab: HolderType): CertGroup[] {
   const map = new Map<string, CertGroup>();
   for (const cert of certs) {
     const key = tab === "MEMBER"
-      ? (cert.memberId ?? cert.memberCallsign ?? cert.discordId)
-      : cert.discordId;
+      ? (cert.memberId ?? cert.memberCallsign ?? cert.discordId ?? cert.fullName)
+      : (cert.externalCallsign ?? cert.discordId ?? cert.fullName);
     if (!map.has(key)) {
       map.set(key, {
         key,
         callsign: cert.memberCallsign,
         fullName: cert.fullName,
         discordId: cert.discordId,
+        externalCallsign: cert.externalCallsign,
         externalRank: cert.externalRank,
         externalUnit: cert.externalUnit,
         certs: [],
@@ -83,6 +85,14 @@ function formatDate(iso: string) {
 const MEMBER_TYPES: CertificateType[]   = ["PURSUIT", "OPERATIONAL", "SCENE_CONTROL"];
 const EXTERNAL_TYPES: CertificateType[] = ["COPILOT", "TRANSPORT"];
 
+const CERT_ORDER: Record<CertificateType, number> = {
+  PURSUIT: 0, OPERATIONAL: 1, SCENE_CONTROL: 2, COPILOT: 3, TRANSPORT: 4,
+};
+
+function sortCerts(certs: Certification[]) {
+  return [...certs].sort((a, b) => CERT_ORDER[a.certificateType] - CERT_ORDER[b.certificateType]);
+}
+
 function IssueModal({
   onClose,
   onIssued,
@@ -98,6 +108,7 @@ function IssueModal({
   const [memberId,       setMemberId]       = useState("");
   const [fullName,       setFullName]       = useState("");
   const [discordId,      setDiscordId]      = useState("");
+  const [extCallsign,    setExtCallsign]    = useState("");
   const [extRank,        setExtRank]        = useState("");
   const [extUnit,        setExtUnit]        = useState("");
   const [selectedTypes,  setSelectedTypes]  = useState<Set<CertificateType>>(new Set());
@@ -139,14 +150,15 @@ function IssueModal({
         Array.from(selectedTypes).map((certType) =>
           api.post<Certification>("/certifications", {
             holderType,
-            memberId:        holderType === "MEMBER" ? memberId || null : null,
+            memberId:          holderType === "MEMBER" ? memberId || null : null,
             fullName,
-            discordId,
-            externalRank:    extRank || null,
-            externalUnit:    extUnit || null,
-            certificateType: certType,
-            issuedByEmail:   issuerEmail,
-            notes:           notes || null,
+            discordId:         discordId || null,
+            externalCallsign:  holderType === "EXTERNAL" ? extCallsign || null : null,
+            externalRank:      extRank || null,
+            externalUnit:      extUnit || null,
+            certificateType:   certType,
+            issuedByEmail:     issuerEmail,
+            notes:             notes || null,
           })
         )
       );
@@ -195,8 +207,8 @@ function IssueModal({
           {/* Membro (piloto do sistema) */}
           {holderType === "MEMBER" && (
             <div className="space-y-1">
-              <label className="block font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#c8d6e5" }}>Piloto</label>
-              <select value={memberId} onChange={(e) => setMemberId(e.target.value)} style={inputStyle}>
+              <label className="block font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#c8d6e5" }}>Piloto *</label>
+              <select required value={memberId} onChange={(e) => setMemberId(e.target.value)} style={inputStyle}>
                 <option value="">Selecionar piloto...</option>
                 {pilots.map((p) => (
                   <option key={p.id} value={p.id}>{p.callsign} — {p.fullName}</option>
@@ -205,34 +217,43 @@ function IssueModal({
             </div>
           )}
 
-          {/* Nome + Discord */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <label className="block font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#c8d6e5" }}>Nome *</label>
-              <input required value={fullName} onChange={(e) => setFullName(e.target.value)}
-                placeholder="Nome completo" style={inputStyle} />
-            </div>
-            <div className="space-y-1">
-              <label className="block font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#c8d6e5" }}>Discord *</label>
-              <input required value={discordId} onChange={(e) => setDiscordId(e.target.value)}
-                placeholder="user#0000" style={inputStyle} />
-            </div>
-          </div>
-
-          {/* Campos exclusivos de externo */}
+          {/* Nome + Discord — só para externos */}
           {holderType === "EXTERNAL" && (
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
-                <label className="block font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#c8d6e5" }}>Patente</label>
-                <input value={extRank} onChange={(e) => setExtRank(e.target.value)}
-                  placeholder="Ex: Sgt." style={inputStyle} />
+                <label className="block font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#c8d6e5" }}>Nome *</label>
+                <input required value={fullName} onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Nome completo" style={inputStyle} />
               </div>
               <div className="space-y-1">
-                <label className="block font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#c8d6e5" }}>Unidade</label>
-                <input value={extUnit} onChange={(e) => setExtUnit(e.target.value)}
-                  placeholder="Ex: SWAT" style={inputStyle} />
+                <label className="block font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#c8d6e5" }}>Discord (opcional)</label>
+                <input value={discordId} onChange={(e) => setDiscordId(e.target.value)}
+                  placeholder="user#0000" style={inputStyle} />
               </div>
             </div>
+          )}
+
+          {/* Campos exclusivos de externo */}
+          {holderType === "EXTERNAL" && (
+            <>
+              <div className="space-y-1">
+                <label className="block font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#c8d6e5" }}>Callsign *</label>
+                <input required value={extCallsign} onChange={(e) => setExtCallsign(e.target.value)}
+                  placeholder="Ex: SGT. Santos" style={inputStyle} />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <label className="block font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#c8d6e5" }}>Patente</label>
+                  <input value={extRank} onChange={(e) => setExtRank(e.target.value)}
+                    placeholder="Ex: Sgt." style={inputStyle} />
+                </div>
+                <div className="space-y-1">
+                  <label className="block font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#c8d6e5" }}>Unidade</label>
+                  <input value={extUnit} onChange={(e) => setExtUnit(e.target.value)}
+                    placeholder="Ex: SWAT" style={inputStyle} />
+                </div>
+              </div>
+            </>
           )}
 
           {/* Tipos de certificado — multi-select */}
@@ -284,11 +305,13 @@ function IssueModal({
               style={{ background: "#0a1628", color: "#5a7a9a", border: "1px solid #1c2a3a" }}>
               Cancelar
             </button>
-            <button type="submit" disabled={saving || selectedTypes.size === 0}
+            <button
+              type="submit"
+              disabled={saving || selectedTypes.size === 0 || (holderType === "MEMBER" && !memberId)}
               className="flex-1 font-mono text-[11px] tracking-[1px] uppercase py-2.5 rounded font-bold"
               style={{
                 background: "#2a1f0a", color: "#e8c97e", border: "1px solid #e8c97e44",
-                opacity: (saving || selectedTypes.size === 0) ? 0.4 : 1,
+                opacity: (saving || selectedTypes.size === 0 || (holderType === "MEMBER" && !memberId)) ? 0.4 : 1,
               }}>
               {saving
                 ? "Emitindo..."
@@ -338,8 +361,10 @@ export default function CertificationsPage() {
     tab,
   ).filter((g) => {
     const q = search.toLowerCase();
-    return !q || g.fullName.toLowerCase().includes(q) || g.discordId.toLowerCase().includes(q) ||
-      (g.callsign?.toLowerCase().includes(q) ?? false);
+    return !q || g.fullName.toLowerCase().includes(q) ||
+      (g.discordId?.toLowerCase().includes(q) ?? false) ||
+      (g.callsign?.toLowerCase().includes(q) ?? false) ||
+      (g.externalCallsign?.toLowerCase().includes(q) ?? false);
   });
 
   return (
@@ -410,12 +435,12 @@ export default function CertificationsPage() {
         {/* Header */}
         <div className="hidden md:grid px-4 py-2 text-[9px] font-mono tracking-[1.5px] uppercase"
           style={{
-            gridTemplateColumns: tab === "MEMBER" ? "0.8fr 1fr 1fr 1.4fr" : "1fr 1fr 1fr 1.4fr",
+            gridTemplateColumns: tab === "MEMBER" ? "0.8fr 1.2fr 1.6fr" : "1fr 1fr 1fr 1.4fr",
             borderBottom: "1px solid #1c2a3a", color: "#8a9ab8",
           }}>
           {tab === "MEMBER"
             ? ["Callsign", "Nome", "Certificações"].map((h, i) => <div key={i}>{h}</div>)
-            : ["Nome", "Discord", "Patente / Unidade", "Certificações"].map((h, i) => <div key={i}>{h}</div>)
+            : ["Callsign", "Nome", "Patente / Unidade", "Certificações"].map((h, i) => <div key={i}>{h}</div>)
           }
         </div>
 
@@ -445,38 +470,16 @@ export default function CertificationsPage() {
                   </>
                 ) : (
                   <>
-                    <div className="font-mono text-sm font-bold" style={{ color: "#c8d6e5" }}>{g.fullName}</div>
-                    <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{g.discordId}</div>
+                    <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>{g.externalCallsign ?? "—"}</div>
+                    <div className="font-mono text-[11px]" style={{ color: "#c8d6e5" }}>{g.fullName}</div>
                     <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>
                       {[g.externalRank, g.externalUnit].filter(Boolean).join(" · ") || "—"}
                     </div>
                   </>
                 )}
-                <div className="flex flex-wrap gap-1.5 items-center">
-                  {g.certs.map((cert) => (
-                    <RevokableBadge
-                      key={cert.id}
-                      cert={cert}
-                      canDelete={canDelete}
-                      onRevoke={setConfirmDeleteId}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              {/* Mobile */}
-              <div className="md:hidden flex items-center gap-3 px-4 py-3"
-                style={{ borderBottom: "1px solid #111823" }}>
-                <div className="flex-1 min-w-0">
-                  <div className="font-mono text-sm font-bold mb-1" style={{ color: tab === "MEMBER" ? "#e8c97e" : "#c8d6e5" }}>
-                    {tab === "MEMBER" ? (g.callsign ?? g.fullName) : g.fullName}
-                  </div>
-                  {tab === "MEMBER"
-                    ? <div className="font-mono text-[10px] mb-1.5" style={{ color: "#5a7a9a" }}>{g.fullName}</div>
-                    : <div className="font-mono text-[10px] mb-1.5" style={{ color: "#5a7a9a" }}>{g.discordId}</div>
-                  }
-                  <div className="flex flex-wrap gap-1.5">
-                    {g.certs.map((cert) => (
+                <div className="flex flex-col gap-1">
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    {sortCerts(g.certs).map((cert) => (
                       <RevokableBadge
                         key={cert.id}
                         cert={cert}
@@ -485,6 +488,51 @@ export default function CertificationsPage() {
                       />
                     ))}
                   </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                    {sortCerts(g.certs).map((cert) => (
+                      <span key={cert.id} className="font-mono text-[9px]" style={{ color: "#3a5a7a" }}>
+                        {CERT_META[cert.certificateType].label}: {formatDate(cert.issuedAt)}
+                      </span>
+                    ))}
+                  </div>
+                  {g.certs.some((c) => c.notes) && (
+                    <div className="font-mono text-[9px]" style={{ color: "#5a7a9a" }}>
+                      Obs: {g.certs.filter((c) => c.notes).map((c) => c.notes).join(" · ")}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Mobile */}
+              <div className="md:hidden flex items-center gap-3 px-4 py-3"
+                style={{ borderBottom: "1px solid #111823" }}>
+                <div className="flex-1 min-w-0">
+                  <div className="font-mono text-sm font-bold mb-1" style={{ color: "#e8c97e" }}>
+                    {tab === "MEMBER" ? (g.callsign ?? g.fullName) : (g.externalCallsign ?? g.fullName)}
+                  </div>
+                  <div className="font-mono text-[10px] mb-1.5" style={{ color: "#5a7a9a" }}>{g.fullName}</div>
+                  <div className="flex flex-wrap gap-1.5 mb-1">
+                    {sortCerts(g.certs).map((cert) => (
+                      <RevokableBadge
+                        key={cert.id}
+                        cert={cert}
+                        canDelete={canDelete}
+                        onRevoke={setConfirmDeleteId}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-x-3">
+                    {sortCerts(g.certs).map((cert) => (
+                      <span key={cert.id} className="font-mono text-[9px]" style={{ color: "#3a5a7a" }}>
+                        {CERT_META[cert.certificateType].label}: {formatDate(cert.issuedAt)}
+                      </span>
+                    ))}
+                  </div>
+                  {g.certs.some((c) => c.notes) && (
+                    <div className="font-mono text-[9px] mt-0.5" style={{ color: "#5a7a9a" }}>
+                      Obs: {g.certs.filter((c) => c.notes).map((c) => c.notes).join(" · ")}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
