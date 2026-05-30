@@ -84,7 +84,8 @@ export interface Certification {
   memberId: string | null;
   memberCallsign: string | null;
   fullName: string;
-  discordId: string;
+  discordId: string | null;
+  externalCallsign: string | null;
   externalRank: string | null;
   externalUnit: string | null;
   certificateType: CertificateType;

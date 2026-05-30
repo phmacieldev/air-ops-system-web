@@ -119,7 +119,6 @@ export default function PilotsPage() {
     }, {});
 
   const sorted = [...pilots].sort((a, b) => {
-    if (b.accumulatedScore !== a.accumulatedScore) return b.accumulatedScore - a.accumulatedScore;
     const ra = RANK_ORDER[a.rankName.toUpperCase()] ?? 0;
     const rb = RANK_ORDER[b.rankName.toUpperCase()] ?? 0;
     if (rb !== ra) return rb - ra;
