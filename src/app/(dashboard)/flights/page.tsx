@@ -715,6 +715,60 @@ export default function FlightsPage() {
         </div>
       </div>
 
+      {/* Aprovações pendentes — visível apenas para LEAD */}
+      {isLead && pendingFlights.length > 0 && (
+        <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+          <div className="px-4 py-2.5 flex items-center gap-2" style={{ borderBottom: "1px solid #1c2a3a" }}>
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#e8c97e" }} />
+            <span className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
+              Aguardando Aprovação — {pendingFlights.length}
+            </span>
+          </div>
+          <div className="px-4 py-1">
+            {pendingFlights.map((f) => {
+              const mins = f.endAt ? calcDurationMins(f.startedAt, f.endAt) : null;
+              const busy = reviewing === f.id;
+              return (
+                <div
+                  key={f.id}
+                  className="flex items-center gap-3 py-3 flex-wrap"
+                  style={{ borderBottom: "1px solid #111823" }}
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>{f.pilotCallsign}</div>
+                    <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>
+                      {f.pilotName} · {formatTime(f.startedAt)}
+                    </div>
+                  </div>
+                  <TypeBadge type={f.flightType} />
+                  <div className="font-mono text-sm font-bold" style={{ color: "#c8d6e5" }}>
+                    {formatMins(mins)}
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button
+                      disabled={busy}
+                      onClick={() => reviewFlight(f.id, "APPROVED")}
+                      className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-opacity"
+                      style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1 }}
+                    >
+                      Aprovar
+                    </button>
+                    <button
+                      disabled={busy}
+                      onClick={() => reviewFlight(f.id, "REJECTED")}
+                      className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-opacity"
+                      style={{ background: "#2a0a0a", color: "#e24b4a", border: "1px solid #e24b4a44", opacity: busy ? 0.5 : 1 }}
+                    >
+                      Rejeitar
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Histórico completo com filtros */}
       <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
         <div className="px-4 py-2.5 flex items-center justify-between flex-wrap gap-2" style={{ borderBottom: "1px solid #1c2a3a" }}>
@@ -840,59 +894,6 @@ export default function FlightsPage() {
         )}
       </div>
 
-      {/* Aprovações pendentes — visível apenas para LEAD */}
-      {isLead && pendingFlights.length > 0 && (
-        <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
-          <div className="px-4 py-2.5 flex items-center gap-2" style={{ borderBottom: "1px solid #1c2a3a" }}>
-            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#e8c97e" }} />
-            <span className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
-              Aguardando Aprovação — {pendingFlights.length}
-            </span>
-          </div>
-          <div className="px-4 py-1">
-            {pendingFlights.map((f) => {
-              const mins = f.endAt ? calcDurationMins(f.startedAt, f.endAt) : null;
-              const busy = reviewing === f.id;
-              return (
-                <div
-                  key={f.id}
-                  className="flex items-center gap-3 py-3 flex-wrap"
-                  style={{ borderBottom: "1px solid #111823" }}
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>{f.pilotCallsign}</div>
-                    <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>
-                      {f.pilotName} · {formatTime(f.startedAt)}
-                    </div>
-                  </div>
-                  <TypeBadge type={f.flightType} />
-                  <div className="font-mono text-sm font-bold" style={{ color: "#c8d6e5" }}>
-                    {formatMins(mins)}
-                  </div>
-                  <div className="flex gap-2 shrink-0">
-                    <button
-                      disabled={busy}
-                      onClick={() => reviewFlight(f.id, "APPROVED")}
-                      className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-opacity"
-                      style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1 }}
-                    >
-                      Aprovar
-                    </button>
-                    <button
-                      disabled={busy}
-                      onClick={() => reviewFlight(f.id, "REJECTED")}
-                      className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-opacity"
-                      style={{ background: "#2a0a0a", color: "#e24b4a", border: "1px solid #e24b4a44", opacity: busy ? 0.5 : 1 }}
-                    >
-                      Rejeitar
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
 
     </div>
   );

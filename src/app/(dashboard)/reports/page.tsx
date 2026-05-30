@@ -463,6 +463,7 @@ export default function ReportsPage() {
   const [approving, setApproving]             = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId]   = useState<string | null>(null);
   const [confirmRejectId, setConfirmRejectId]   = useState<string | null>(null);
+  const [deleteError, setDeleteError]           = useState<string | null>(null);
   const [flightId, setFlightId]     = useState("");
   const [seizures, setSeizures]     = useState(0);
   const [chases, setChases]         = useState(0);
@@ -518,8 +519,11 @@ export default function ReportsPage() {
     try {
       await api.delete(`/reports/${id}`);
       setReports((prev) => prev.filter((r) => r.id !== id));
-    } catch { /* silently ignore */ }
-    finally { setConfirmDeleteId(null); }
+    } catch (err: unknown) {
+      setDeleteError(err instanceof Error ? err.message : "Erro ao deletar relatório.");
+    } finally {
+      setConfirmDeleteId(null);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -723,6 +727,60 @@ export default function ReportsPage() {
                 Score = Apreensões ×5 + Perseguições ×3 + Ops ×3 − Acidentes ×5
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {deleteError && (
+        <div role="alert" className="font-mono text-[11px] px-4 py-2.5 rounded-lg flex items-center justify-between"
+          style={{ background: "#2a0a0a", color: "#e24b4a", border: "1px solid #e24b4a33" }}>
+          <span>{deleteError}</span>
+          <button onClick={() => setDeleteError(null)} className="ml-4 opacity-60 hover:opacity-100">×</button>
+        </div>
+      )}
+
+      {/* Relatórios pendentes — visível apenas para revisores */}
+      {canReview && reports.some((r) => r.status === "PENDING") && (
+        <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+          <div className="px-4 py-2.5 flex items-center gap-2" style={{ borderBottom: "1px solid #1c2a3a" }}>
+            <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#e8c97e" }} />
+            <span className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
+              Aguardando Aprovação — {reports.filter((r) => r.status === "PENDING").length}
+            </span>
+          </div>
+          <div className="px-4 py-1">
+            {reports.filter((r) => r.status === "PENDING").map((r) => {
+              const busy = approving === r.id;
+              const rankColor = RANK_COLOR[r.pilotRank] ?? "#5a7a9a";
+              return (
+                <div key={r.id} className="flex items-center gap-3 py-3 flex-wrap"
+                  style={{ borderBottom: "1px solid #111823" }}>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-mono text-sm font-bold" style={{ color: rankColor }}>{r.pilotCallsign}</div>
+                    <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>
+                      {r.pilotName} · {r.seizures} aprs · {r.chases} pers · {r.operations} ops · {r.accidents} acid.
+                    </div>
+                  </div>
+                  <div className="font-mono text-base font-bold" style={{ color: "#e8c97e" }}>
+                    {Math.max(0, r.seizures * 5 + r.chases * 3 + r.operations * 3 - r.accidents * 5)} pts
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <button disabled={busy}
+                      onClick={() => reviewReport(r.id, "APPROVED")}
+                      className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-opacity"
+                      style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1 }}>
+                      {busy ? "..." : "Aprovar"}
+                    </button>
+                    <button disabled={busy}
+                      onClick={() => setConfirmRejectId(r.id)}
+                      className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-opacity"
+                      style={{ background: "#2a0a0a", color: "#e24b4a", border: "1px solid #e24b4a44", opacity: busy ? 0.5 : 1 }}>
+                      {busy ? "..." : "Rejeitar"}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
