@@ -15,6 +15,80 @@ interface Stats {
   atualizado_em: string;
 }
 
+interface Cert {
+  id: string;
+  holderType: "MEMBER" | "EXTERNAL";
+  memberCallsign: string | null;
+  memberProfileImageUrl: string | null;
+  fullName: string;
+  discordId: string | null;
+  externalCallsign: string | null;
+  externalRank: string | null;
+  externalUnit: string | null;
+  certificateType: string;
+  issuedByCallsign: string;
+  issuedAt: string;
+}
+
+type CertGroup = {
+  key: string;
+  label: string;
+  imageUrl: string | null;
+  fullName: string;
+  meta: string | null;
+  certs: Cert[];
+};
+
+const CERT_META: Record<string, { label: string; bg: string; color: string; border: string }> = {
+  PURSUIT:       { label: "Pursuit",       bg: "#0a1f2a", color: "#4a90e2", border: "#4a90e244" },
+  OPERATIONAL:   { label: "Operational",   bg: "#0a2a14", color: "#3dd68c", border: "#3dd68c44" },
+  SCENE_CONTROL: { label: "Scene Control", bg: "#2a1f0a", color: "#e8c97e", border: "#e8c97e44" },
+  COPILOT:       { label: "Copiloto",      bg: "#1a1c2a", color: "#8a9ab8", border: "#4a5a7a44" },
+  TRANSPORT:     { label: "Transporte",    bg: "#1a1c2a", color: "#8a9ab8", border: "#4a5a7a44" },
+};
+
+const CERT_ORDER: Record<string, number> = {
+  PURSUIT: 0, OPERATIONAL: 1, SCENE_CONTROL: 2, COPILOT: 3, TRANSPORT: 4,
+};
+
+function groupCerts(certs: Cert[], tab: "MEMBER" | "EXTERNAL"): CertGroup[] {
+  const map = new Map<string, CertGroup>();
+  for (const c of certs.filter((x) => x.holderType === tab)) {
+    const key = tab === "MEMBER"
+      ? (c.memberCallsign ?? c.fullName)
+      : (c.externalCallsign ?? c.discordId ?? c.fullName);
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        label: tab === "MEMBER" ? (c.memberCallsign ?? c.fullName) : (c.externalCallsign ?? c.fullName),
+        imageUrl: c.memberProfileImageUrl,
+        fullName: c.fullName,
+        meta: tab === "EXTERNAL" ? [c.externalRank, c.externalUnit].filter(Boolean).join(" · ") || null : null,
+        certs: [],
+      });
+    }
+    map.get(key)!.certs.push(c);
+  }
+  return Array.from(map.values());
+}
+
+function CertAvatar({ imageUrl, name, size = 36 }: { imageUrl?: string | null; name: string; size?: number }) {
+  const initials = name.split(/[.\s_-]/).slice(0, 2).map((w) => w[0] ?? "").join("").toUpperCase().slice(0, 2) || "?";
+  if (imageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={imageUrl} alt={name} className="rounded-full object-cover shrink-0"
+        style={{ width: size, height: size }} />
+    );
+  }
+  return (
+    <div className="rounded-full flex items-center justify-center font-mono font-bold shrink-0"
+      style={{ width: size, height: size, background: "#1c2a3a", color: "#e8c97e", fontSize: size * 0.32, border: "1px solid #e8c97e22" }}>
+      {initials}
+    </div>
+  );
+}
+
 function useCountUp(target: number, duration = 1400, active = false) {
   const [value, setValue] = useState(0);
   const raf = useRef<number | null>(null);
@@ -87,6 +161,8 @@ export default function StatusPage() {
   const [error,     setError]     = useState(false);
   const [active,    setActive]    = useState(false);
   const [countdown, setCountdown] = useState(REFRESH_INTERVAL);
+  const [certs,     setCerts]     = useState<Cert[]>([]);
+  const [certTab,   setCertTab]   = useState<"MEMBER" | "EXTERNAL">("MEMBER");
 
   function fetchStats() {
     fetch(`${API_URL}/public/stats`)
@@ -102,9 +178,18 @@ export default function StatusPage() {
   }, []);
 
   useEffect(() => {
+    fetch(`${API_URL}/public/certifications`)
+      .then((r) => r.ok ? r.json() as Promise<Cert[]> : [])
+      .then(setCerts)
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     const tick = setInterval(() => setCountdown((c) => (c > 0 ? c - 1 : REFRESH_INTERVAL)), 1000);
     return () => clearInterval(tick);
   }, []);
+
+  const groups = groupCerts(certs, certTab);
 
   return (
     <div
@@ -233,6 +318,72 @@ export default function StatusPage() {
           </>
         )}
       </div>
+
+      {/* Certificações públicas */}
+      {certs.length > 0 && (
+        <div className="w-full max-w-4xl mx-auto px-4 pb-10 space-y-4">
+          <div className="text-center space-y-1">
+            <p className="text-[10px] font-mono tracking-[3px] uppercase" style={{ color: "#3a5a7a" }}>
+              Air Support Division
+            </p>
+            <h2 className="font-mono text-xl font-bold tracking-widest uppercase" style={{ color: "#e8c97e" }}>
+              Certificações
+            </h2>
+          </div>
+
+          {/* Tabs */}
+          <div className="flex justify-center">
+            <div className="flex rounded-lg overflow-hidden" style={{ border: "1px solid #1c2a3a" }}>
+              {(["MEMBER", "EXTERNAL"] as const).map((t) => (
+                <button key={t} onClick={() => setCertTab(t)}
+                  className="font-mono text-[10px] tracking-[1px] uppercase px-6 py-2 transition-colors"
+                  style={{
+                    background: certTab === t ? "#1c2a3a" : "#0d1117",
+                    color:      certTab === t ? "#e8c97e" : "#5a7a9a",
+                  }}>
+                  {t === "MEMBER" ? "Membros" : "Externos"}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Grid de certificados */}
+          {groups.length === 0 ? (
+            <p className="text-center font-mono text-[11px] tracking-[2px] uppercase" style={{ color: "#3a5a7a" }}>
+              Nenhuma certificação registrada
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {groups.map((g) => (
+                <div key={g.key} className="rounded-lg p-4 flex items-start gap-3"
+                  style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+                  <CertAvatar imageUrl={g.imageUrl} name={g.label} size={40} />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-mono text-sm font-bold truncate" style={{ color: "#e8c97e" }}>
+                      {g.label}
+                    </div>
+                    <div className="font-mono text-[10px] truncate mb-2" style={{ color: "#5a7a9a" }}>
+                      {g.meta ?? g.fullName}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[...g.certs].sort((a, b) => (CERT_ORDER[a.certificateType] ?? 9) - (CERT_ORDER[b.certificateType] ?? 9)).map((c) => {
+                        const m = CERT_META[c.certificateType];
+                        return (
+                          <span key={c.id}
+                            className="text-[9px] font-mono tracking-[0.5px] uppercase px-2 py-0.5 rounded whitespace-nowrap"
+                            style={{ background: m?.bg ?? "#1c2a3a", color: m?.color ?? "#5a7a9a", border: `1px solid ${m?.border ?? "#1c2a3a"}` }}>
+                            {m?.label ?? c.certificateType}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Footer */}
       <div
