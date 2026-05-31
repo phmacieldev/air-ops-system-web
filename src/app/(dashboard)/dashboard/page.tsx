@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
-import { Pilot, FlightLog, PerformanceReport } from "@/types";
+import { Pilot, FlightLog, PerformanceReport, PagedResponse } from "@/types";
 
 function formatDuration(startedAt: string, endAt: string | null) {
   if (!endAt) return "—";
@@ -14,17 +14,6 @@ function formatDuration(startedAt: string, endAt: string | null) {
   return h > 0 ? `${h}h${String(m).padStart(2, "0")}` : `${m}min`;
 }
 
-function formatTime(iso: string) {
-  const d = new Date(iso);
-  const now = new Date();
-  const isToday = d.toDateString() === now.toDateString();
-  const time = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-  if (isToday) return `hoje ${time}`;
-  const yesterday = new Date(now);
-  yesterday.setDate(now.getDate() - 1);
-  if (d.toDateString() === yesterday.toDateString()) return `ontem ${time}`;
-  return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }) + ` ${time}`;
-}
 
 const FLIGHT_TYPE_MAP: Record<string, { label: string; bg: string; color: string }> = {
   PATRULHA:          { label: "Patrulha",     bg: "#1a1c2a", color: "#8a9ab8" },
@@ -135,8 +124,8 @@ export default function DashboardPage() {
 
   useEffect(() => {
     api.get<Pilot[]>("/pilots", 60).then(setPilots).catch(() => {});
-    api.get<FlightLog[]>("/flights").then(setFlights).catch(() => {});
-    api.get<PerformanceReport[]>("/reports").then(setReports).catch(() => {});
+    api.get<PagedResponse<FlightLog>>("/flights?page=0&size=5").then((r) => setFlights(r.data)).catch(() => {});
+    api.get<PagedResponse<PerformanceReport>>("/reports?page=0&size=1000").then((r) => setReports(r.data)).catch(() => {});
   }, []);
 
   const activePilots   = pilots.filter((p) => p.status === "ACTIVE").length;
@@ -230,8 +219,8 @@ export default function DashboardPage() {
                 return (
                   <div
                     key={f.id}
-                    className="grid items-center gap-3 py-2.5"
-                    style={{ gridTemplateColumns: "34px 1fr 1.2fr 1fr auto", borderBottom: "1px solid #111823" }}
+                    className="grid items-center gap-2 py-2.5"
+                    style={{ gridTemplateColumns: "34px minmax(0,1fr) minmax(0,1.4fr) 60px 100px 48px", borderBottom: "1px solid #111823" }}
                   >
                     <PilotAvatar
                       callsign={f.pilotCallsign}
@@ -245,21 +234,21 @@ export default function DashboardPage() {
                     <div className="font-mono text-[10px] truncate" style={{ color: "#5a7a9a" }}>
                       {f.pilotName}
                     </div>
-                    <div>
+                    <div className="flex items-center overflow-hidden">
                       {pilot && (
                         <span
-                          className="text-[9px] font-mono uppercase px-1 py-px rounded whitespace-nowrap"
+                          className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded truncate"
                           style={{ background: rankStyle.bg, color: rankStyle.color, border: `1px solid ${rankStyle.border}` }}
                         >
                           {RANK_LABEL[pilot.rankName] ?? pilot.rankName}
                         </span>
                       )}
                     </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
+                    <div className="overflow-hidden">
                       <FlightTypeBadge type={f.flightType} />
-                      <span className="font-mono text-[11px] font-bold" style={{ color: "#e8c97e" }}>
-                        {formatDuration(f.startedAt, f.endAt)}
-                      </span>
+                    </div>
+                    <div className="font-mono text-[11px] font-bold text-right" style={{ color: "#e8c97e" }}>
+                      {formatDuration(f.startedAt, f.endAt)}
                     </div>
                   </div>
                 );

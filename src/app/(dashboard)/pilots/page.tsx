@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { Pilot, PerformanceReport } from "@/types";
+import { Pilot, PerformanceReport, PagedResponse } from "@/types";
 
 const MEMBER_CERTS = ["PURSUIT", "OPERATIONAL", "SCENE_CONTROL"];
 
@@ -107,8 +107,8 @@ export default function PilotsPage() {
   useEffect(() => {
     Promise.all([
       api.get<Pilot[]>("/pilots", 60),
-      api.get<PerformanceReport[]>("/reports").catch(() => [] as PerformanceReport[]),
-    ]).then(([p, r]) => { setPilots(p); setReports(r); }).finally(() => setLoading(false));
+      api.get<PagedResponse<PerformanceReport>>("/reports?page=0&size=1000").catch(() => ({ data: [] as PerformanceReport[], pagination: { page: 0, size: 1000, total: 0, totalPages: 0 } })),
+    ]).then(([p, r]) => { setPilots(p); setReports(r.data); }).finally(() => setLoading(false));
   }, []);
 
   const accidentsByCallsign = reports

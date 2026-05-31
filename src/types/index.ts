@@ -95,6 +95,16 @@ export interface Certification {
   notes: string | null;
 }
 
+export interface PagedResponse<T> {
+  data: T[];
+  pagination: {
+    page: number;
+    size: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 export interface ApiError {
   status: number;
   error: string;
