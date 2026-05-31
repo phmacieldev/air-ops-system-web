@@ -74,8 +74,8 @@ O middleware verifica o cookie `asd_token` antes de qualquer renderização. Rot
 **JWT em `localStorage` + cookie não-httpOnly**
 O token vive em dois lugares: `localStorage` (para leitura pelo `api.ts` em cada requisição) e cookie `asd_token` com `SameSite=Lax` (para que o middleware de borda possa verificar sem acesso ao JavaScript). Auto-refresh acontece automaticamente quando o token vai expirar em menos de 2 horas.
 
-**`api.ts` centralizado com cache TTL e retry em 401**
-Todas as chamadas passam por um único cliente que injeta `Authorization: Bearer <token>`, implementa cache TTL opcional no cliente (evita refetch em navegação entre páginas) e retenta com token renovado em caso de 401.
+**`api.ts` centralizado com cache TTL, invalidação e retry em 401**
+Todas as chamadas passam por um único cliente que injeta `Authorization: Bearer <token>`, implementa cache TTL opcional no cliente (evita refetch em navegação entre páginas), invalida entradas após mutations críticas (`api.invalidate(prefix)`) e retenta com token renovado em caso de 401.
 
 **Página `/status` com polling por `setInterval`**
 Em vez de WebSockets ou SSE (limitados no free tier), a página usa `setInterval` de 60 segundos com countdown visual — sem dependências extras, funciona em qualquer plano de hospedagem.
@@ -111,6 +111,7 @@ O backend no Render hiberna após 15 min de inatividade. O route handler `/api/k
 - **Sino de notificações** — badge no header com contagem de protocolos e relatórios pendentes (visível para LEAD/ADM/SUPERVISOR), atualizado a cada 60s
 - **Painel Admin** — gestão de membros, edição de perfil (callsign, status, foto), promoção de rank/role e remoção com confirmação por callsign
 - **Configurações** — alteração de e-mail e senha com toggle de visibilidade
+- **Skeleton loaders** em todas as páginas com fetch assíncrono — feedback visual imediato durante o carregamento
 
 ---
 

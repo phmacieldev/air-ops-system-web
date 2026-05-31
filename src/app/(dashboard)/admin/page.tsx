@@ -5,6 +5,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 import { Pilot, Rank, Role } from "@/types";
+import { SkeletonRows } from "@/components/ui/Skeleton";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -371,6 +372,7 @@ export default function AdminPage() {
         rankId:          currentRankId,
       });
       setPilots((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      api.invalidate("/pilots/me");
       setEditTarget(null);
     } catch { /* silently ignore */ }
     finally { setSaving(false); }
@@ -394,6 +396,7 @@ export default function AdminPage() {
     try {
       const updated = await api.patch<Pilot>(`/pilots/${rankTarget.id}/rank`, { rankId });
       setPilots((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      api.invalidate("/pilots/me");
       setRankTarget(null);
     } catch { /* silently ignore */ }
     finally { setSaving(false); }
@@ -482,9 +485,7 @@ export default function AdminPage() {
         </div>
 
         {loading ? (
-          <div className="py-16 text-center font-mono text-[11px] tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
-            Carregando...
-          </div>
+          <SkeletonRows rows={8} />
         ) : (
           <>
             {/* Desktop header */}

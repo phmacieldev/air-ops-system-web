@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
+import { SkeletonRows } from "@/components/ui/Skeleton";
 import { FlightLog, PagedResponse } from "@/types";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Pagination } from "@/components/ui/Pagination";
@@ -699,9 +700,7 @@ export default function FlightsPage() {
             </div>
             <div className="px-4 py-1">
               {loading ? (
-                <p className="py-8 text-center text-[11px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
-                  Carregando...
-                </p>
+                <SkeletonRows rows={5} />
               ) : recentFlights.length === 0 ? (
                 <p className="py-8 text-center text-[11px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
                   Nenhum voo registrado

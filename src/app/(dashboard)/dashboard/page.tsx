@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { Pilot, FlightLog, PerformanceReport, PagedResponse } from "@/types";
+import { Skeleton, SkeletonCards, SkeletonRows } from "@/components/ui/Skeleton";
 
 function formatDuration(startedAt: string, endAt: string | null) {
   if (!endAt) return "—";
@@ -119,14 +120,21 @@ function PilotAvatar({ name, callsign, photoUrl, size = 32 }: {
 
 export default function DashboardPage() {
   const { user } = useAuth();
-  const [pilots, setPilots] = useState<Pilot[]>([]);
+  const [pilots,  setPilots]  = useState<Pilot[]>([]);
   const [flights, setFlights] = useState<FlightLog[]>([]);
   const [reports, setReports] = useState<PerformanceReport[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get<Pilot[]>("/pilots", 60).then(setPilots).catch(() => {});
-    api.get<PagedResponse<FlightLog>>("/flights?page=0&size=5").then((r) => setFlights(r.data)).catch(() => {});
-    api.get<PagedResponse<PerformanceReport>>("/reports?page=0&size=1000").then((r) => setReports(r.data)).catch(() => {});
+    Promise.all([
+      api.get<Pilot[]>("/pilots", 60),
+      api.get<PagedResponse<FlightLog>>("/flights?page=0&size=5", 15),
+      api.get<PagedResponse<PerformanceReport>>("/reports?page=0&size=1000", 30),
+    ]).then(([p, fl, rep]) => {
+      setPilots(p);
+      setFlights(fl.data);
+      setReports(rep.data);
+    }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   const activePilots   = pilots.filter((p) => p.status === "ACTIVE").length;
@@ -172,8 +180,24 @@ export default function DashboardPage() {
         </p>
       </div>
 
+      {loading ? (
+        <div className="space-y-4">
+          <SkeletonCards cards={4} className="h-24" />
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+              <Skeleton className="h-10 mx-4 mt-4 w-32" />
+              <SkeletonRows rows={5} />
+            </div>
+            <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+              <Skeleton className="h-10 mx-4 mt-4 w-32" />
+              <SkeletonRows rows={5} />
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* Stat cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+      {!loading && <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
         {statCards.map(({ label, value, sub, accent }) => (
           <div
             key={label}
@@ -195,10 +219,10 @@ export default function DashboardPage() {
             </div>
           </div>
         ))}
-      </div>
+      </div>}
 
       {/* Two panels */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {!loading && <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Atividade Recente */}
         <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
@@ -309,7 +333,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-      </div>
+      </div>}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
+import { SkeletonRows } from "@/components/ui/Skeleton";
 import { Certification, CertificateType, HolderType, Pilot } from "@/types";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
@@ -362,8 +363,8 @@ export default function CertificationsPage() {
 
   useEffect(() => {
     Promise.all([
-      api.get<Certification[]>("/certifications"),
-      api.get<Pilot[]>("/pilots"),
+      api.get<Certification[]>("/certifications", 30),
+      api.get<Pilot[]>("/pilots", 60),
     ]).then(([c, p]) => { setCerts(c); setPilots(p); }).finally(() => setLoading(false));
   }, []);
 
@@ -464,9 +465,7 @@ export default function CertificationsPage() {
         </div>
 
         {loading ? (
-          <div className="px-4 py-8 text-center font-mono text-[11px] tracking-[2px] uppercase animate-pulse" style={{ color: "#5a7a9a" }}>
-            Carregando...
-          </div>
+          <SkeletonRows rows={5} className="h-16" />
         ) : groups.length === 0 ? (
           <div className="px-4 py-8 text-center font-mono text-[11px] tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
             Nenhuma certificação encontrada

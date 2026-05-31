@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
+import { SkeletonRows } from "@/components/ui/Skeleton";
 import { FlightLog, PerformanceReport, PagedResponse } from "@/types";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Pagination } from "@/components/ui/Pagination";
@@ -524,6 +525,7 @@ export default function ReportsPage() {
         status,
       });
       setReports((prev) => prev.map((r) => (r.id === id ? updated : r)));
+      if (status === "APPROVED") api.invalidate("/pilots/me");
     } catch { /* silently ignore */ }
     finally { setApproving(null); }
   }
@@ -859,9 +861,7 @@ export default function ReportsPage() {
         )}
 
         {loading ? (
-          <div className="py-16 text-center text-[11px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
-            Carregando...
-          </div>
+          <SkeletonRows rows={8} />
         ) : empty ? (
           <div className="py-16 text-center text-[11px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
             Nenhum relatório encontrado

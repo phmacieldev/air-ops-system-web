@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { SkeletonRows } from "@/components/ui/Skeleton";
 import { Pilot, PerformanceReport, PagedResponse } from "@/types";
 
 const MEMBER_CERTS = ["PURSUIT", "OPERATIONAL", "SCENE_CONTROL"];
@@ -189,9 +190,7 @@ export default function PilotsPage() {
         </div>
 
         {loading ? (
-          <div className="py-16 text-center text-[11px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
-            Carregando...
-          </div>
+          <SkeletonRows rows={8} className="h-16" />
         ) : filtered.length === 0 ? (
           <div className="py-16 text-center text-[11px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
             Nenhum piloto encontrado

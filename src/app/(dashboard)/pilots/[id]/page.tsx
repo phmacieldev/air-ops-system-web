@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { Pilot, FlightLog, PerformanceReport, Rank, PagedResponse } from "@/types";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Skeleton, SkeletonRows } from "@/components/ui/Skeleton";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -294,6 +295,7 @@ export default function PilotProfilePage() {
     try {
       const updated = await api.patch<Pilot>(`/pilots/${pilot.id}/rank`, { rankId });
       setPilot(updated);
+      api.invalidate("/pilots/me");
       setShowModal(false);
     } catch { /* silently ignore */ }
     finally { setSaving(false); }
@@ -323,6 +325,7 @@ export default function PilotProfilePage() {
         profileImageUrl: data.profileImageUrl || null,
       });
       setPilot(updated);
+      api.invalidate("/pilots/me");
       setShowOwnEdit(false);
     } catch { /* silently ignore */ }
     finally { setSaving(false); }
@@ -339,8 +342,18 @@ export default function PilotProfilePage() {
 
   if (loading) {
     return (
-      <div className="min-h-full flex items-center justify-center" style={{ background: "#0a0d12" }}>
-        <span className="font-mono text-[11px] tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>Carregando...</span>
+      <div className="p-3 md:p-6 space-y-4 min-h-full" style={{ background: "#0a0d12" }}>
+        <div className="flex items-center gap-4">
+          <Skeleton className="w-16 h-16 rounded-full shrink-0" />
+          <div className="flex-1 space-y-2">
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20" />)}
+        </div>
+        <SkeletonRows rows={6} />
       </div>
     );
   }

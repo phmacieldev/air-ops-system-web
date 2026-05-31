@@ -75,7 +75,7 @@ export function Sidebar() {
 
   useEffect(() => {
     if (!token) return;
-    api.get<Pilot>("/pilots/me", 3600)
+    api.get<Pilot>("/pilots/me", 60)
       .then((p) => setMyPilotId(p.id))
       .catch(() => {});
   }, [token]);
