@@ -35,27 +35,23 @@ export default function RegisterPage() {
   const { user } = useAuth();
   const router   = useRouter();
 
-  if (user && user.role !== "LEAD" && user.role !== "SUPERVISOR") {
-    router.replace("/dashboard");
-    return null;
-  }
-
-  // Pilot fields (collected first)
   const [fullName,        setFullName]        = useState("");
   const [callsign,        setCallsign]        = useState("");
   const [discordId,       setDiscordId]       = useState("");
   const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [name,            setName]            = useState("");
+  const [nameLinked,      setNameLinked]      = useState(true);
+  const [email,           setEmail]           = useState("");
+  const [password,        setPassword]        = useState("");
+  const [loading,         setLoading]         = useState(false);
+  const [error,           setError]           = useState<string | null>(null);
+  const [success,         setSuccess]         = useState(false);
+  const [showPassword,    setShowPassword]    = useState(false);
 
-  // Account fields (name auto-synced from fullName)
-  const [name,         setName]         = useState("");
-  const [nameLinked,   setNameLinked]   = useState(true);
-  const [email,        setEmail]        = useState("");
-  const [password,     setPassword]     = useState("");
-
-  const [loading,      setLoading]      = useState(false);
-  const [error,        setError]        = useState<string | null>(null);
-  const [success,      setSuccess]      = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+  if (user && user.role !== "LEAD" && user.role !== "SUPERVISOR") {
+    router.replace("/dashboard");
+    return null;
+  }
 
   function onFullNameChange(val: string) {
     setFullName(val);

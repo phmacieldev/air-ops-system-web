@@ -47,6 +47,7 @@ function Feedback({ msg, ok }: { msg: string; ok: boolean }) {
 function ChangeEmailSection({ onNewToken }: { onNewToken: (t: string) => void }) {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newEmail,         setNewEmail]         = useState("");
+  const [showPass,         setShowPass]         = useState(false);
   const [saving,  setSaving]  = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
 
@@ -71,9 +72,17 @@ function ChangeEmailSection({ onNewToken }: { onNewToken: (t: string) => void })
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="space-y-1">
         <Label>Senha atual</Label>
-        <input type="password" required value={currentPassword}
-          onChange={(e) => setCurrentPassword(e.target.value)}
-          style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
+        <div className="relative">
+          <input type={showPass ? "text" : "password"} required value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            style={{ ...inputStyle, paddingRight: "72px" }} onFocus={focusBorder} onBlur={blurBorder} />
+          <button type="button" onClick={() => setShowPass((v) => !v)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 font-mono text-[11px] transition-colors"
+            style={{ color: showPass ? "#e8c97e" : "#5a7a9a" }}
+            aria-label={showPass ? "Ocultar senha" : "Mostrar senha"}>
+            {showPass ? "ocultar" : "mostrar"}
+          </button>
+        </div>
       </div>
       <div className="space-y-1">
         <Label>Novo e-mail</Label>
@@ -99,6 +108,7 @@ function ChangePasswordSection({ onNewToken }: { onNewToken: (t: string) => void
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword,      setNewPassword]      = useState("");
   const [confirmPassword,  setConfirmPassword]  = useState("");
+  const [showPass,         setShowPass]         = useState(false);
   const [saving,   setSaving]   = useState(false);
   const [feedback, setFeedback] = useState<{ msg: string; ok: boolean } | null>(null);
 
@@ -128,25 +138,35 @@ function ChangePasswordSection({ onNewToken }: { onNewToken: (t: string) => void
     }
   }
 
+  const pwType = showPass ? "text" : "password";
+  const pwStyle = { ...inputStyle, paddingRight: "72px" };
+
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <div className="space-y-1">
-        <Label>Senha atual</Label>
-        <input type="password" required value={currentPassword}
+        <div className="flex items-center justify-between mb-1">
+          <Label>Senha atual</Label>
+          <button type="button" onClick={() => setShowPass((v) => !v)}
+            className="font-mono text-[10px] transition-colors"
+            style={{ color: showPass ? "#e8c97e" : "#5a7a9a" }}>
+            {showPass ? "ocultar" : "mostrar"}
+          </button>
+        </div>
+        <input type={pwType} required value={currentPassword}
           onChange={(e) => setCurrentPassword(e.target.value)}
-          style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
+          style={pwStyle} onFocus={focusBorder} onBlur={blurBorder} />
       </div>
       <div className="space-y-1">
         <Label>Nova senha</Label>
-        <input type="password" required value={newPassword}
+        <input type={pwType} required value={newPassword}
           onChange={(e) => setNewPassword(e.target.value)}
-          style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
+          style={pwStyle} onFocus={focusBorder} onBlur={blurBorder} />
       </div>
       <div className="space-y-1">
         <Label>Confirmar nova senha</Label>
-        <input type="password" required value={confirmPassword}
+        <input type={pwType} required value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
-          style={inputStyle} onFocus={focusBorder} onBlur={blurBorder} />
+          style={pwStyle} onFocus={focusBorder} onBlur={blurBorder} />
       </div>
       {feedback && <Feedback msg={feedback.msg} ok={feedback.ok} />}
       <div className="flex justify-end">

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
-import { Pilot, FlightLog, PerformanceReport, Rank } from "@/types";
+import { Pilot, FlightLog, PerformanceReport, Rank, PagedResponse } from "@/types";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
@@ -275,14 +275,14 @@ export default function PilotProfilePage() {
     if (!id) return;
     Promise.all([
       api.get<Pilot>(`/pilots/${id}`),
-      api.get<FlightLog[]>("/flights"),
-      api.get<PerformanceReport[]>("/reports"),
+      api.get<PagedResponse<FlightLog>>("/flights?page=0&size=1000"),
+      api.get<PagedResponse<PerformanceReport>>("/reports?page=0&size=1000"),
       api.get<Rank[]>("/ranks", 300),
     ]).then(([p, fl, rep, rk]) => {
       setPilot(p);
-      setFlights(fl.filter((f) => f.pilotCallsign === p.callsign)
+      setFlights(fl.data.filter((f) => f.pilotCallsign === p.callsign)
         .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()));
-      setReports(rep.filter((r) => r.pilotCallsign === p.callsign)
+      setReports(rep.data.filter((r) => r.pilotCallsign === p.callsign)
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       setRanks(rk);
     }).finally(() => setLoading(false));

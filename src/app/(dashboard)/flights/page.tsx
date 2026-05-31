@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
-import { FlightLog } from "@/types";
+import { FlightLog, PagedResponse } from "@/types";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Pagination } from "@/components/ui/Pagination";
 
 // ── Enums ─────────────────────────────────────────────────────────────────
 
@@ -344,6 +345,8 @@ export default function FlightsPage() {
   const [editingFlight, setEditingFlight]   = useState<FlightLog | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [deleteError, setDeleteError]         = useState<string | null>(null);
+  const [page, setPage]                       = useState(0);
+  const [pagination, setPagination]           = useState({ total: 0, totalPages: 0, size: 20 });
 
   const today   = new Date().toISOString().split("T")[0];
   const timeNow = new Date().toTimeString().slice(0, 5);
@@ -356,10 +359,14 @@ export default function FlightsPage() {
   const [notes, setNotes]           = useState("");
 
   useEffect(() => {
-    api.get<FlightLog[]>("/flights")
-      .then((data) => setFlights(data.sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())))
+    setLoading(true);
+    api.get<PagedResponse<FlightLog>>(`/flights?page=${page}&size=10`)
+      .then((res) => {
+        setFlights(res.data);
+        setPagination({ total: res.pagination.total, totalPages: res.pagination.totalPages, size: res.pagination.size });
+      })
       .finally(() => setLoading(false));
-  }, []);
+  }, [page]);
 
   async function reviewFlight(id: string, status: "APPROVED" | "REJECTED") {
     if (!user) return;
@@ -379,7 +386,13 @@ export default function FlightsPage() {
   async function deleteFlight(id: string) {
     try {
       await api.delete(`/flights/${id}`);
-      setFlights((prev) => prev.filter((f) => f.id !== id));
+      const res = await api.get<PagedResponse<FlightLog>>(`/flights?page=${page}&size=10`);
+      if (res.data.length === 0 && page > 0) {
+        setPage(page - 1);
+      } else {
+        setFlights(res.data);
+        setPagination({ total: res.pagination.total, totalPages: res.pagination.totalPages, size: res.pagination.size });
+      }
     } catch (err: unknown) {
       setDeleteError(err instanceof Error ? err.message : "Erro ao deletar protocolo.");
     } finally {
@@ -413,7 +426,10 @@ export default function FlightsPage() {
         endAt:     endTime ? `${date}T${endTime}:00` : null,
         notes:     notes.trim() || null,
       });
-      setFlights((prev) => [created, ...prev]);
+      const res = await api.get<PagedResponse<FlightLog>>("/flights?page=0&size=10");
+      setPage(0);
+      setFlights(res.data);
+      setPagination({ total: res.pagination.total, totalPages: res.pagination.totalPages, size: res.pagination.size });
       setSuccess(true);
       setNotes("");
       setEndTime("");
@@ -479,7 +495,7 @@ export default function FlightsPage() {
         <div className="flex items-center gap-2 shrink-0">
           <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#3dd68c" }} />
           <span className="text-[10px] font-mono tracking-[2px] uppercase" style={{ color: "#3dd68c" }}>
-            {loading ? "—" : `${flights.length} reg.`}
+            {loading ? "—" : `${pagination.total} reg.`}
           </span>
         </div>
       </div>
@@ -787,7 +803,7 @@ export default function FlightsPage() {
           <span className="text-[11px] font-mono tracking-[1.5px] uppercase shrink-0" style={{ color: "#e8c97e" }}>
             Histórico de Protocolos
           </span>
-          <span className="text-[10px] font-mono" style={{ color: "#5a7a9a" }}>{filteredFlights.length} reg.</span>
+          <span className="text-[10px] font-mono" style={{ color: "#5a7a9a" }}>{pagination.total} reg.</span>
         </div>
         {/* Filter bar */}
         <div className="flex flex-wrap gap-2 px-4 py-3" style={{ borderBottom: "1px solid #1c2a3a" }}>
@@ -842,8 +858,8 @@ export default function FlightsPage() {
         ) : (
           <div>
             <div className="hidden md:grid gap-x-3 px-4 py-1.5 text-[9px] font-mono tracking-[1.5px] uppercase"
-              style={{ gridTemplateColumns: "1fr 1.2fr 1fr 0.9fr 0.7fr 0.7fr 0.7fr 0.8fr", borderBottom: "1px solid #1c2a3a", color: "#8a9ab8" }}>
-              {["Callsign", "Nome", "Tipo", "Aeronave", "Início", "Fim", "Duração", "Status"].map(h => <div key={h}>{h}</div>)}
+              style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr) 1fr 0.9fr 0.7fr 0.7fr 0.7fr 0.8fr 80px", borderBottom: "1px solid #1c2a3a", color: "#8a9ab8" }}>
+              {["Callsign", "Nome", "Tipo", "Aeronave", "Início", "Fim", "Duração", "Status", ""].map(h => <div key={h}>{h}</div>)}
             </div>
             {filteredFlights.map((f) => {
               const mins = f.endAt ? calcDurationMins(f.startedAt, f.endAt) : null;
@@ -851,7 +867,7 @@ export default function FlightsPage() {
                 <div key={f.id}>
                   {/* Desktop row */}
                   <div className="hidden md:grid gap-x-3 px-4 py-2.5 items-center transition-colors"
-                    style={{ gridTemplateColumns: "1fr 1.2fr 1fr 0.9fr 0.7fr 0.7fr 0.7fr 0.8fr auto", borderBottom: "1px solid #111823" }}
+                    style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr) 1fr 0.9fr 0.7fr 0.7fr 0.7fr 0.8fr 80px", borderBottom: "1px solid #111823" }}
                     onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                     <div className="font-mono text-sm font-bold leading-none truncate" style={{ color: "#c8d6e5" }}>{f.pilotCallsign}</div>
@@ -862,24 +878,26 @@ export default function FlightsPage() {
                     <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{f.endAt ? formatTime(f.endAt) : "—"}</div>
                     <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>{formatMins(mins)}</div>
                     <div><StatusBadge status={f.flightStatus} /></div>
-                    {f.flightStatus === "PENDING" && (
-                      <button
-                        onClick={() => setEditingFlight(f)}
-                        className="font-mono text-[10px] tracking-[1px] uppercase px-2.5 py-1 rounded"
-                        style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e244", whiteSpace: "nowrap" }}
-                      >
-                        Editar
-                      </button>
-                    )}
-                    {isLead && f.flightStatus === "REJECTED" && (
-                      <button
-                        onClick={() => setConfirmDeleteId(f.id)}
-                        className="font-mono text-[10px] tracking-[1px] uppercase px-2.5 py-1 rounded"
-                        style={{ background: "#1a0a0a", color: "#e24b4a", border: "1px solid #e24b4a44", whiteSpace: "nowrap" }}
-                      >
-                        Deletar
-                      </button>
-                    )}
+                    <div className="flex justify-end">
+                      {f.flightStatus === "PENDING" && (
+                        <button
+                          onClick={() => setEditingFlight(f)}
+                          className="font-mono text-[10px] tracking-[1px] uppercase px-2.5 py-1 rounded"
+                          style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e244", whiteSpace: "nowrap" }}
+                        >
+                          Editar
+                        </button>
+                      )}
+                      {isLead && f.flightStatus === "REJECTED" && (
+                        <button
+                          onClick={() => setConfirmDeleteId(f.id)}
+                          className="font-mono text-[10px] tracking-[1px] uppercase px-2.5 py-1 rounded"
+                          style={{ background: "#1a0a0a", color: "#e24b4a", border: "1px solid #e24b4a44", whiteSpace: "nowrap" }}
+                        >
+                          Deletar
+                        </button>
+                      )}
+                    </div>
                   </div>
                   {/* Mobile card */}
                   <div className="md:hidden flex items-center gap-3 px-4 py-2.5" style={{ borderBottom: "1px solid #111823" }}>
@@ -904,8 +922,14 @@ export default function FlightsPage() {
             })}
           </div>
         )}
+        <Pagination
+          page={page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          size={pagination.size}
+          onChange={setPage}
+        />
       </div>
-
 
     </div>
   );

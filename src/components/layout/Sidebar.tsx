@@ -6,7 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { Pilot } from "@/types";
-import { LayoutDashboard, Users, Plane, FileText, BookOpen, LogOut, UserPlus, Award, Settings } from "lucide-react";
+import { LayoutDashboard, Users, Plane, FileText, BookOpen, LogOut, UserPlus, Award, Settings, Shield } from "lucide-react";
 
 const NAV_ITEMS = [
   { label: "Dashboard",        href: "/dashboard",       Icon: LayoutDashboard },
@@ -158,6 +158,14 @@ export function Sidebar() {
               active={pathname === "/register"}
             />
           </>
+        )}
+        {(user?.role === "LEAD" || user?.role === "ADM") && (
+          <NavItem
+            href="/admin"
+            label="Painel Admin"
+            Icon={Shield}
+            active={pathname === "/admin"}
+          />
         )}
       </nav>
 

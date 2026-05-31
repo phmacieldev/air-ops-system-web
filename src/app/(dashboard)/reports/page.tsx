@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
-import { FlightLog, PerformanceReport } from "@/types";
+import { FlightLog, PerformanceReport, PagedResponse } from "@/types";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Pagination } from "@/components/ui/Pagination";
 
 // ── Rank helpers ──────────────────────────────────────────────────────────
 
@@ -391,15 +392,15 @@ function ReportRow({
       <div className="font-mono text-lg font-bold text-center" style={{ color: "#e24b4a" }}>{report.accidents}</div>
       <ScoreBar pilotRank={report.pilotRank} pilotAccumulatedScore={report.pilotAccumulatedScore} />
       <div className="flex flex-col gap-1.5">
-        <div>
-          <StatusBadge status={report.status} />
-        </div>
-        {isPending && (
-          <div className="flex items-center gap-2">
+        {isPending ? (
+          <div className="grid gap-1.5" style={{ gridTemplateColumns: "1fr 1fr" }}>
+            <div className="flex items-center justify-center">
+              <StatusBadge status={report.status} />
+            </div>
             <button
               onClick={() => onEdit(report)}
-              className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-colors"
-              style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e244", whiteSpace: "nowrap" }}
+              className="font-mono text-[10px] tracking-[1px] uppercase py-1.5 rounded transition-colors"
+              style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e244" }}
               onMouseEnter={(e) => (e.currentTarget.style.background = "#112d42")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "#0a1f2a")}
             >
@@ -410,8 +411,8 @@ function ReportRow({
                 <button
                   disabled={busy}
                   onClick={() => onReview(report.id, "APPROVED")}
-                  className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-colors"
-                  style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1, whiteSpace: "nowrap" }}
+                  className="font-mono text-[10px] tracking-[1px] uppercase py-1.5 rounded transition-colors"
+                  style={{ background: "#0a2a14", color: "#3dd68c", border: "1px solid #3dd68c44", opacity: busy ? 0.5 : 1 }}
                   onMouseEnter={(e) => { if (!busy) e.currentTarget.style.background = "#0f3d1e"; }}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "#0a2a14")}
                 >
@@ -420,8 +421,8 @@ function ReportRow({
                 <button
                   disabled={busy}
                   onClick={() => onReject(report.id)}
-                  className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-colors"
-                  style={{ background: "#2a0a0a", color: "#e24b4a", border: "1px solid #e24b4a44", opacity: busy ? 0.5 : 1, whiteSpace: "nowrap" }}
+                  className="font-mono text-[10px] tracking-[1px] uppercase py-1.5 rounded transition-colors"
+                  style={{ background: "#2a0a0a", color: "#e24b4a", border: "1px solid #e24b4a44", opacity: busy ? 0.5 : 1 }}
                   onMouseEnter={(e) => { if (!busy) e.currentTarget.style.background = "#3d0f0f"; }}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "#2a0a0a")}
                 >
@@ -430,19 +431,21 @@ function ReportRow({
               </>
             )}
           </div>
+        ) : (
+          <div>
+            <StatusBadge status={report.status} />
+          </div>
         )}
         {canDelete && report.status === "REJECTED" && (
-          <div className="flex items-center gap-2 mt-1">
-            <button
-              onClick={() => onDelete(report.id)}
-              className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-colors"
-              style={{ background: "#1a0a0a", color: "#e24b4a", border: "1px solid #e24b4a44", whiteSpace: "nowrap" }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#2a0f0f")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "#1a0a0a")}
-            >
-              Deletar
-            </button>
-          </div>
+          <button
+            onClick={() => onDelete(report.id)}
+            className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-1.5 rounded transition-colors w-fit"
+            style={{ background: "#1a0a0a", color: "#e24b4a", border: "1px solid #e24b4a44", whiteSpace: "nowrap" }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "#2a0f0f")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "#1a0a0a")}
+          >
+            Deletar
+          </button>
         )}
       </div>
     </div>
@@ -464,6 +467,8 @@ export default function ReportsPage() {
   const [confirmDeleteId, setConfirmDeleteId]   = useState<string | null>(null);
   const [confirmRejectId, setConfirmRejectId]   = useState<string | null>(null);
   const [deleteError, setDeleteError]           = useState<string | null>(null);
+  const [page, setPage]                         = useState(0);
+  const [pagination, setPagination]             = useState({ total: 0, totalPages: 0, size: 20 });
   const [flightId, setFlightId]     = useState("");
   const [seizures, setSeizures]     = useState(0);
   const [chases, setChases]         = useState(0);
@@ -474,18 +479,27 @@ export default function ReportsPage() {
 
   useEffect(() => {
     Promise.all([
-      api.get<PerformanceReport[]>("/reports"),
       api.get<FlightLog[]>("/flights/mine").catch(() => [] as FlightLog[]),
-    ]).then(([r, f]) => {
-      setReports(r);
-      const reportedFlightIds = new Set(r.map((rep) => rep.flightId));
+      api.get<PagedResponse<PerformanceReport>>("/reports?page=0&size=1000").catch(() => ({ data: [] as PerformanceReport[], pagination: { page: 0, size: 1000, total: 0, totalPages: 0 } })),
+    ]).then(([f, allReports]) => {
+      const reportedFlightIds = new Set(allReports.data.map((rep) => rep.flightId));
       const eligible = f.filter(
         (fl) => (fl.flightStatus === "APPROVED" || fl.flightStatus === "PENDING") && !reportedFlightIds.has(fl.id)
       );
       setFlights(eligible);
       if (eligible.length > 0) setFlightId(eligible[0].id);
-    }).finally(() => setLoading(false));
+    });
   }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    api.get<PagedResponse<PerformanceReport>>(`/reports?page=${page}&size=10`)
+      .then((res) => {
+        setReports(res.data);
+        setPagination({ total: res.pagination.total, totalPages: res.pagination.totalPages, size: res.pagination.size });
+      })
+      .finally(() => setLoading(false));
+  }, [page]);
 
   const canReview  = user?.role === "LEAD" || user?.role === "SUPERVISOR" || user?.role === "ADM";
   const canDelete  = user?.role === "LEAD" || user?.role === "ADM";
@@ -518,7 +532,13 @@ export default function ReportsPage() {
     if (!canDelete) return;
     try {
       await api.delete(`/reports/${id}`);
-      setReports((prev) => prev.filter((r) => r.id !== id));
+      const res = await api.get<PagedResponse<PerformanceReport>>(`/reports?page=${page}&size=10`);
+      if (res.data.length === 0 && page > 0) {
+        setPage(page - 1);
+      } else {
+        setReports(res.data);
+        setPagination({ total: res.pagination.total, totalPages: res.pagination.totalPages, size: res.pagination.size });
+      }
     } catch (err: unknown) {
       setDeleteError(err instanceof Error ? err.message : "Erro ao deletar relatório.");
     } finally {
@@ -532,14 +552,17 @@ export default function ReportsPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const created = await api.post<PerformanceReport>("/reports", {
+      await api.post<PerformanceReport>("/reports", {
         flightId,
         seizures,
         chases,
         operations,
         accidents,
       });
-      setReports((prev) => [created, ...prev]);
+      const res = await api.get<PagedResponse<PerformanceReport>>("/reports?page=0&size=10");
+      setPage(0);
+      setReports(res.data);
+      setPagination({ total: res.pagination.total, totalPages: res.pagination.totalPages, size: res.pagination.size });
       setFlights((prev) => prev.filter((f) => f.id !== flightId));
       setSeizures(0); setChases(0); setOperations(0); setAccidents(0);
       setFlightId("");
@@ -587,7 +610,7 @@ export default function ReportsPage() {
         description="O relatório será marcado como rejeitado. O piloto não receberá os pontos desta missão."
         confirmLabel="Rejeitar"
         variant="warning"
-        onConfirm={() => { confirmRejectId && reviewReport(confirmRejectId, "REJECTED"); setConfirmRejectId(null); }}
+        onConfirm={() => { if (confirmRejectId) reviewReport(confirmRejectId, "REJECTED"); setConfirmRejectId(null); }}
         onCancel={() => setConfirmRejectId(null)}
       />
 
@@ -604,7 +627,7 @@ export default function ReportsPage() {
         <div className="flex items-center gap-2 shrink-0">
           <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: "#3dd68c" }} />
           <span className="text-[10px] font-mono tracking-[2px] uppercase" style={{ color: "#3dd68c" }}>
-            {loading ? "—" : `${reports.length} reg.`}
+            {loading ? "—" : `${pagination.total} reg.`}
           </span>
         </div>
       </div>
@@ -882,6 +905,13 @@ export default function ReportsPage() {
             </div>
           </>
         )}
+        <Pagination
+          page={page}
+          totalPages={pagination.totalPages}
+          total={pagination.total}
+          size={pagination.size}
+          onChange={setPage}
+        />
       </div>
 
     </div>
