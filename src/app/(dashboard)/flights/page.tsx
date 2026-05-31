@@ -17,12 +17,14 @@ const FLIGHT_TYPE_OPTIONS = [
   { value: "PALETO_BANK",       label: "Banco Paleto",          bg: "#2a1f0a", color: "#e8c97e" },
   { value: "BANK_68_10_90",     label: "Banco 68 [10-90]",     bg: "#2a1f0a", color: "#e8c97e" },
   { value: "BOOSTING_S",        label: "Boosting-S 10-80",     bg: "#0a2a14", color: "#3dd68c" },
+  { value: "COCAINE_RUN",        label: "Cocaine-Run 10-80",    bg: "#0a2a14", color: "#3dd68c" },
+  { value: "TREINAMENTO",      label: "Treinamento",      bg: "#1a1a2a", color: "#9a8ab8" },
 ] as const;
 
 const AIRCRAFT_OPTIONS = [
+  { value: "LITTLE_BIRD", label: "Little Bird"  },
   { value: "MAVERICK_1",  label: "Maverick N-1" },
   { value: "MAVERICK_2",  label: "Maverick N-2" },
-  { value: "LITTLE_BIRD", label: "Little Bird"  },
 ] as const;
 
 const FLIGHT_TYPE_MAP: Record<string, { label: string; bg: string; color: string }> = {
@@ -33,6 +35,8 @@ const FLIGHT_TYPE_MAP: Record<string, { label: string; bg: string; color: string
   PALETO_BANK:       { label: "Banco Paleto",   bg: "#2a1f0a", color: "#e8c97e" },
   BANK_68_10_90:     { label: "Banco 68",       bg: "#2a1f0a", color: "#e8c97e" },
   BOOSTING_S:        { label: "Boost. 10-80",   bg: "#0a2a14", color: "#3dd68c" },
+  COCAINE_RUN:       { label: "Cocaine-Run",    bg: "#0a2a14", color: "#3dd68c" },
+  TREINAMENTO:       { label: "Treinamento",    bg: "#1a1a2a", color: "#9a8ab8" },
 };
 
 const AIRCRAFT_LABEL: Record<string, string> = {

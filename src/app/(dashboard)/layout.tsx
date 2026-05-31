@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { NotificationBell } from "@/components/ui/NotificationBell";
 import { Menu, X } from "lucide-react";
 
 export default function DashboardLayout({
@@ -59,6 +60,14 @@ export default function DashboardLayout({
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
 
+        {/* Topbar desktop */}
+        <div
+          className="hidden md:flex items-center justify-end px-4 py-2 shrink-0"
+          style={{ background: "#0d1117", borderBottom: "1px solid #1c2a3a" }}
+        >
+          <NotificationBell />
+        </div>
+
         {/* Topbar mobile */}
         <div
           className="flex md:hidden items-center gap-3 px-4 py-3 shrink-0"
@@ -72,11 +81,12 @@ export default function DashboardLayout({
             {open ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <span
-            className="font-mono text-[11px] font-bold tracking-widest uppercase"
+            className="flex-1 font-mono text-[11px] font-bold tracking-widest uppercase"
             style={{ color: "#e8c97e" }}
           >
             Air Support Division
           </span>
+          <NotificationBell />
         </div>
 
         <main className="flex-1 flex flex-col overflow-auto">

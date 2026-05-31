@@ -151,6 +151,97 @@ function DeleteModal({ pilot, onConfirm, onClose, saving }: {
   );
 }
 
+// ── Edit Modal ────────────────────────────────────────────────────────────
+
+const STATUS_OPTIONS: { value: string; label: string }[] = [
+  { value: "ACTIVE",    label: "Ativo"      },
+  { value: "INACTIVE",  label: "Inativo"    },
+  { value: "SUSPENDED", label: "Suspenso"   },
+  { value: "TRAINING",  label: "Treinamento" },
+];
+
+function EditModal({ pilot, onConfirm, onClose, saving }: {
+  pilot: Pilot;
+  onConfirm: (data: { callsign: string; status: string; profileImageUrl: string }) => void;
+  onClose: () => void;
+  saving: boolean;
+}) {
+  const [callsign,       setCallsign]       = useState(pilot.callsign);
+  const [status,         setStatus]         = useState(pilot.status);
+  const [profileImageUrl, setProfileImageUrl] = useState(pilot.profileImageUrl ?? "");
+
+  const unchanged =
+    callsign === pilot.callsign &&
+    status === pilot.status &&
+    profileImageUrl === (pilot.profileImageUrl ?? "");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ background: "rgba(0,0,0,0.7)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="w-full max-w-sm rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+        <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #1c2a3a" }}>
+          <div>
+            <span className="font-mono text-[11px] tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>Editar Perfil</span>
+            <div className="font-mono text-[10px] mt-0.5" style={{ color: "#5a7a9a" }}>{pilot.callsign}</div>
+          </div>
+          <button onClick={onClose} className="font-mono text-lg leading-none" style={{ color: "#5a7a9a" }}>×</button>
+        </div>
+        <div className="p-4 space-y-3">
+          <div className="space-y-1">
+            <label className="font-mono text-[10px] tracking-[1.5px] uppercase" style={{ color: "#5a7a9a" }}>Callsign</label>
+            <input
+              type="text"
+              value={callsign}
+              onChange={(e) => setCallsign(e.target.value)}
+              className="w-full font-mono text-sm px-3 py-2 rounded outline-none"
+              style={{ background: "#0a0d12", border: "1px solid #1c2a3a", color: "#c8d6e5" }}
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="font-mono text-[10px] tracking-[1.5px] uppercase" style={{ color: "#5a7a9a" }}>Status</label>
+            <select
+              value={status}
+              onChange={(e) => setStatus(e.target.value as typeof status)}
+              className="w-full font-mono text-sm px-3 py-2 rounded outline-none"
+              style={{ background: "#0a0d12", border: "1px solid #1c2a3a", color: "#c8d6e5" }}
+            >
+              {STATUS_OPTIONS.map((o) => (
+                <option key={o.value} value={o.value}>{o.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-1">
+            <label className="font-mono text-[10px] tracking-[1.5px] uppercase" style={{ color: "#5a7a9a" }}>URL da Foto</label>
+            <input
+              type="text"
+              value={profileImageUrl}
+              onChange={(e) => setProfileImageUrl(e.target.value)}
+              placeholder="https://..."
+              className="w-full font-mono text-sm px-3 py-2 rounded outline-none"
+              style={{ background: "#0a0d12", border: "1px solid #1c2a3a", color: "#c8d6e5" }}
+            />
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button onClick={onClose}
+              className="flex-1 font-mono text-[11px] tracking-[1px] uppercase py-2 rounded"
+              style={{ background: "#1c2a3a", color: "#5a7a9a" }}>
+              Cancelar
+            </button>
+            <button
+              disabled={saving || unchanged || !callsign.trim()}
+              onClick={() => onConfirm({ callsign, status, profileImageUrl })}
+              className="flex-1 font-mono text-[11px] tracking-[1px] uppercase py-2 rounded"
+              style={{ background: "#e8c97e", color: "#0a0d12", opacity: (saving || unchanged || !callsign.trim()) ? 0.6 : 1 }}>
+              {saving ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Role Modal ────────────────────────────────────────────────────────────
 
 const ROLES: { value: Role; label: string; desc: string; color: string }[] = [
@@ -232,6 +323,7 @@ export default function AdminPage() {
 
   const [rankTarget,   setRankTarget]   = useState<Pilot | null>(null);
   const [roleTarget,   setRoleTarget]   = useState<Pilot | null>(null);
+  const [editTarget,   setEditTarget]   = useState<Pilot | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Pilot | null>(null);
   const [saving,       setSaving]       = useState(false);
 
@@ -265,6 +357,23 @@ export default function AdminPage() {
       instructor: "INSTRUCTOR", pilot: "PILOT", trainee: "TRAINEE",
     };
     return grupoToRole[p.grupo] ?? "TRAINEE";
+  }
+
+  async function editPilot(data: { callsign: string; status: string; profileImageUrl: string }) {
+    if (!editTarget) return;
+    setSaving(true);
+    try {
+      const currentRankId = ranks.find((r) => r.name === editTarget.rankName)?.id ?? null;
+      const updated = await api.put<Pilot>(`/pilots/${editTarget.id}`, {
+        callsign:        data.callsign,
+        status:          data.status,
+        profileImageUrl: data.profileImageUrl || null,
+        rankId:          currentRankId,
+      });
+      setPilots((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
+      setEditTarget(null);
+    } catch { /* silently ignore */ }
+    finally { setSaving(false); }
   }
 
   async function changeRole(newRole: Role) {
@@ -310,6 +419,10 @@ export default function AdminPage() {
       {rankTarget && (
         <RankModal pilot={rankTarget} ranks={ranks} onConfirm={changeRank}
           onClose={() => setRankTarget(null)} saving={saving} />
+      )}
+      {editTarget && (
+        <EditModal pilot={editTarget} onConfirm={editPilot}
+          onClose={() => setEditTarget(null)} saving={saving} />
       )}
       {roleTarget && (
         <RoleModal
@@ -418,6 +531,11 @@ export default function AdminPage() {
                       {GROUP_LABEL[p.grupo] ?? p.grupo}
                     </div>
                     <div className="flex gap-2 flex-wrap">
+                      <button onClick={() => setEditTarget(p)}
+                        className="font-mono text-[10px] tracking-[1px] uppercase px-2.5 py-1.5 rounded"
+                        style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e233", whiteSpace: "nowrap" }}>
+                        Editar
+                      </button>
                       <button onClick={() => setRankTarget(p)}
                         className="font-mono text-[10px] tracking-[1px] uppercase px-2.5 py-1.5 rounded"
                         style={{ background: "#1c2a3a", color: "#e8c97e", border: "1px solid #e8c97e33", whiteSpace: "nowrap" }}>
@@ -451,6 +569,11 @@ export default function AdminPage() {
                       <div className="font-mono text-[11px] truncate" style={{ color: "#5a7a9a" }}>{p.fullName}</div>
                     </div>
                     <div className="flex gap-1.5 shrink-0">
+                      <button onClick={() => setEditTarget(p)}
+                        className="font-mono text-[10px] tracking-[1px] uppercase px-2 py-1.5 rounded"
+                        style={{ background: "#0a1f2a", color: "#4a90e2", border: "1px solid #4a90e233" }}>
+                        Edit
+                      </button>
                       <button onClick={() => setRankTarget(p)}
                         className="font-mono text-[10px] tracking-[1px] uppercase px-2 py-1.5 rounded"
                         style={{ background: "#1c2a3a", color: "#e8c97e", border: "1px solid #e8c97e33" }}>
