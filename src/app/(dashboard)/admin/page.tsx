@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import { Pilot, Rank } from "@/types";
+import { Pilot, Rank, Role } from "@/types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -151,6 +151,74 @@ function DeleteModal({ pilot, onConfirm, onClose, saving }: {
   );
 }
 
+// ── Role Modal ────────────────────────────────────────────────────────────
+
+const ROLES: { value: Role; label: string; desc: string; color: string }[] = [
+  { value: "ADM",        label: "ADM",        desc: "Acesso total · invisível no roster",  color: "#c084fc" },
+  { value: "LEAD",       label: "Lead",        desc: "Acesso total · visível no roster",    color: "#e8c97e" },
+  { value: "SUPERVISOR", label: "Supervisor",  desc: "Aprova relatórios e gerencia pilotos", color: "#e8c97e" },
+  { value: "INSTRUCTOR", label: "Instrutor",   desc: "Avalia trainees e cria relatórios",   color: "#e8c97e" },
+  { value: "PILOT",      label: "Piloto",      desc: "Protocolos e relatórios próprios",    color: "#3dd68c" },
+  { value: "TRAINEE",    label: "Trainee",     desc: "Somente protocolo de voo",            color: "#8a9ab8" },
+];
+
+function RoleModal({ pilot, currentRole, onConfirm, onClose, saving, canSetAdm }: {
+  pilot: Pilot;
+  currentRole: Role;
+  onConfirm: (role: Role) => void;
+  onClose: () => void;
+  saving: boolean;
+  canSetAdm: boolean;
+}) {
+  const [selected, setSelected] = useState<Role>(currentRole);
+  const available = canSetAdm ? ROLES : ROLES.filter((r) => r.value !== "ADM");
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+      style={{ background: "rgba(0,0,0,0.7)" }}
+      onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="w-full max-w-sm rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+        <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #1c2a3a" }}>
+          <div>
+            <span className="font-mono text-[11px] tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>Alterar Role</span>
+            <div className="font-mono text-[10px] mt-0.5" style={{ color: "#5a7a9a" }}>{pilot.callsign}</div>
+          </div>
+          <button onClick={onClose} className="font-mono text-lg leading-none" style={{ color: "#5a7a9a" }}>×</button>
+        </div>
+        <div className="p-4 space-y-2">
+          {available.map((r) => {
+            const active = selected === r.value;
+            return (
+              <button key={r.value} onClick={() => setSelected(r.value)}
+                className="w-full flex items-center gap-3 px-3 py-2.5 rounded text-left"
+                style={{ background: active ? "#1c2a3a" : "transparent", border: `1px solid ${active ? "#e8c97e44" : "#1c2a3a"}` }}>
+                <span className="font-mono text-[10px] tracking-[1px] uppercase font-bold w-[80px] shrink-0" style={{ color: r.color }}>
+                  {r.label}
+                </span>
+                <span className="font-mono text-[10px]" style={{ color: "#5a7a9a" }}>{r.desc}</span>
+              </button>
+            );
+          })}
+          <div className="flex gap-2 pt-2">
+            <button onClick={onClose}
+              className="flex-1 font-mono text-[11px] tracking-[1px] uppercase py-2 rounded"
+              style={{ background: "#1c2a3a", color: "#5a7a9a" }}>
+              Cancelar
+            </button>
+            <button
+              disabled={saving || selected === currentRole}
+              onClick={() => onConfirm(selected)}
+              className="flex-1 font-mono text-[11px] tracking-[1px] uppercase py-2 rounded"
+              style={{ background: "#e8c97e", color: "#0a0d12", opacity: (saving || selected === currentRole) ? 0.6 : 1 }}>
+              {saving ? "Salvando..." : "Confirmar"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default function AdminPage() {
@@ -163,6 +231,7 @@ export default function AdminPage() {
   const [error,   setError]   = useState<string | null>(null);
 
   const [rankTarget,   setRankTarget]   = useState<Pilot | null>(null);
+  const [roleTarget,   setRoleTarget]   = useState<Pilot | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Pilot | null>(null);
   const [saving,       setSaving]       = useState(false);
 
@@ -189,6 +258,26 @@ export default function AdminPage() {
     if (user?.role === "LEAD") return target.grupo !== "adm";
     return false;
   };
+
+  function currentRoleOf(p: Pilot): Role {
+    const grupoToRole: Record<string, Role> = {
+      adm: "ADM", lead: "LEAD", supervisor: "SUPERVISOR",
+      instructor: "INSTRUCTOR", pilot: "PILOT", trainee: "TRAINEE",
+    };
+    return grupoToRole[p.grupo] ?? "TRAINEE";
+  }
+
+  async function changeRole(newRole: Role) {
+    if (!roleTarget) return;
+    setSaving(true);
+    try {
+      await api.patch<void>(`/admin/users/${roleTarget.userId}/role`, { role: newRole });
+      const updated = await api.get<Pilot[]>("/admin/pilots");
+      setPilots(updated);
+      setRoleTarget(null);
+    } catch { /* silently ignore */ }
+    finally { setSaving(false); }
+  }
 
   async function changeRank(rankId: string) {
     if (!rankTarget) return;
@@ -221,6 +310,16 @@ export default function AdminPage() {
       {rankTarget && (
         <RankModal pilot={rankTarget} ranks={ranks} onConfirm={changeRank}
           onClose={() => setRankTarget(null)} saving={saving} />
+      )}
+      {roleTarget && (
+        <RoleModal
+          pilot={roleTarget}
+          currentRole={currentRoleOf(roleTarget)}
+          onConfirm={changeRole}
+          onClose={() => setRoleTarget(null)}
+          saving={saving}
+          canSetAdm={user?.role === "LEAD"}
+        />
       )}
       {deleteTarget && (
         <DeleteModal pilot={deleteTarget} onConfirm={deletePilot}
@@ -318,12 +417,19 @@ export default function AdminPage() {
                     <div className="font-mono text-[10px] tracking-[1px] uppercase" style={{ color: "#5a7a9a" }}>
                       {GROUP_LABEL[p.grupo] ?? p.grupo}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
                       <button onClick={() => setRankTarget(p)}
                         className="font-mono text-[10px] tracking-[1px] uppercase px-2.5 py-1.5 rounded"
                         style={{ background: "#1c2a3a", color: "#e8c97e", border: "1px solid #e8c97e33", whiteSpace: "nowrap" }}>
                         Rank
                       </button>
+                      {p.userId !== user?.id && (
+                        <button onClick={() => setRoleTarget(p)}
+                          className="font-mono text-[10px] tracking-[1px] uppercase px-2.5 py-1.5 rounded"
+                          style={{ background: "#1a1c2a", color: "#c084fc", border: "1px solid #c084fc33", whiteSpace: "nowrap" }}>
+                          Role
+                        </button>
+                      )}
                       {canDelete(p) && (
                         <button onClick={() => setDeleteTarget(p)}
                           className="font-mono text-[10px] tracking-[1px] uppercase px-2.5 py-1.5 rounded"
@@ -350,6 +456,13 @@ export default function AdminPage() {
                         style={{ background: "#1c2a3a", color: "#e8c97e", border: "1px solid #e8c97e33" }}>
                         Rank
                       </button>
+                      {p.userId !== user?.id && (
+                        <button onClick={() => setRoleTarget(p)}
+                          className="font-mono text-[10px] tracking-[1px] uppercase px-2 py-1.5 rounded"
+                          style={{ background: "#1a1c2a", color: "#c084fc", border: "1px solid #c084fc33" }}>
+                          Role
+                        </button>
+                      )}
                       {canDelete(p) && (
                         <button onClick={() => setDeleteTarget(p)}
                           className="font-mono text-[10px] tracking-[1px] uppercase px-2 py-1.5 rounded"

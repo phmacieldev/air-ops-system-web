@@ -362,9 +362,15 @@ export default function StatusPage() {
                     <div className="font-mono text-sm font-bold truncate" style={{ color: "#e8c97e" }}>
                       {g.label}
                     </div>
-                    <div className="font-mono text-[10px] truncate mb-2" style={{ color: "#5a7a9a" }}>
-                      {g.meta ?? g.fullName}
+                    <div className="font-mono text-[10px] truncate" style={{ color: "#c8d6e5" }}>
+                      {g.fullName}
                     </div>
+                    {g.meta && (
+                      <div className="font-mono text-[10px] truncate mb-2" style={{ color: "#5a7a9a" }}>
+                        {g.meta}
+                      </div>
+                    )}
+                    {!g.meta && <div className="mb-2" />}
                     <div className="flex flex-wrap gap-1.5">
                       {[...g.certs].sort((a, b) => (CERT_ORDER[a.certificateType] ?? 9) - (CERT_ORDER[b.certificateType] ?? 9)).map((c) => {
                         const m = CERT_META[c.certificateType];
