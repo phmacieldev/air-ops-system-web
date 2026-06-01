@@ -346,10 +346,9 @@ export default function AdminPage() {
   }, {});
 
   const canDelete = (target: Pilot) => {
+    if (user?.role !== "LEAD") return false;
     if (target.userId === user?.id) return false;
-    if (user?.role === "ADM") return target.grupo !== "adm";
-    if (user?.role === "LEAD") return target.grupo !== "adm";
-    return false;
+    return true;
   };
 
   function currentRoleOf(p: Pilot): Role {
