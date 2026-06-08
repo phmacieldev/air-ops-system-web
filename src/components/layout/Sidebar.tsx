@@ -147,6 +147,20 @@ export function Sidebar() {
             active={pathname === href}
           />
         ))}
+        {/* Seção Polícia */}
+        <div className="my-2 mx-3" style={{ borderTop: "1px solid #1c2a3a" }} />
+        <div className="px-3 py-1">
+          <span className="text-[9px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
+            Polícia
+          </span>
+        </div>
+        <NavItem
+          href="/police/documents"
+          label="Documentos"
+          Icon={BookOpen}
+          active={pathname.startsWith("/police/documents")}
+        />
+
         {/* Admin-only: cadastro de usuário */}
         {(user?.role === "LEAD" || user?.role === "SUPERVISOR" || user?.role === "ADM") && (
           <>
