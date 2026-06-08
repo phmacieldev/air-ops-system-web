@@ -25,7 +25,6 @@ const FLIGHT_TYPE_OPTIONS = [
 const AIRCRAFT_OPTIONS = [
   { value: "LITTLE_BIRD", label: "Little Bird"  },
   { value: "MAVERICK_1",  label: "Maverick N-1" },
-  { value: "MAVERICK_2",  label: "Maverick N-2" },
 ] as const;
 
 const FLIGHT_TYPE_MAP: Record<string, { label: string; bg: string; color: string }> = {
@@ -42,7 +41,6 @@ const FLIGHT_TYPE_MAP: Record<string, { label: string; bg: string; color: string
 
 const AIRCRAFT_LABEL: Record<string, string> = {
   MAVERICK_1:  "Maverick N-1",
-  MAVERICK_2:  "Maverick N-2",
   LITTLE_BIRD: "Little Bird",
 };
 
@@ -646,11 +644,11 @@ export default function FlightsPage() {
           </form>
         </div>
 
-        {/* RIGHT — Preview + Logs recentes */}
-        <div className="space-y-4">
+        {/* RIGHT — Preview */}
+        <div className="h-full">
 
           {/* Live preview */}
-          <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
+          <div className="rounded-lg overflow-hidden h-full" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
             <div className="px-4 py-2.5" style={{ borderBottom: "1px solid #1c2a3a" }}>
               <span className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
                 Preview do Protocolo
