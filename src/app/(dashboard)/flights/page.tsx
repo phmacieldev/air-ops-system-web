@@ -161,6 +161,15 @@ function EditFlightModal({
   const [saving,     setSaving]     = useState(false);
   const [error,      setError]      = useState<string | null>(null);
 
+  function endDateForEdit(d: string, st: string, et: string): string {
+    if (et < st) {
+      const next = new Date(d);
+      next.setDate(next.getDate() + 1);
+      return next.toISOString().split("T")[0];
+    }
+    return d;
+  }
+
   async function handleSave() {
     if (!date || !startTime) return;
     if (new Date(`${date}T${startTime}:00`) > new Date()) {
@@ -174,7 +183,7 @@ function EditFlightModal({
         aircraft,
         flightType,
         startedAt: `${date}T${startTime}:00`,
-        endAt:     endTime ? `${date}T${endTime}:00` : null,
+        endAt:     endTime ? `${endDateForEdit(date, startTime, endTime)}T${endTime}:00` : null,
         notes:     notes.trim() || null,
       });
       onSaved(updated);
@@ -408,9 +417,18 @@ export default function FlightsPage() {
 
   const selectedType = FLIGHT_TYPE_OPTIONS.find((o) => o.value === flightType)!;
 
+  function endDateFor(d: string, st: string, et: string): string {
+    if (et < st) {
+      const next = new Date(d);
+      next.setDate(next.getDate() + 1);
+      return next.toISOString().split("T")[0];
+    }
+    return d;
+  }
+
   const previewDuration =
     date && startTime && endTime
-      ? formatMins(calcDurationMins(`${date}T${startTime}`, `${date}T${endTime}`))
+      ? formatMins(calcDurationMins(`${date}T${startTime}`, `${endDateFor(date, startTime, endTime)}T${endTime}`))
       : "—";
 
   async function handleSubmit(e: React.FormEvent) {
@@ -428,7 +446,7 @@ export default function FlightsPage() {
         aircraft,
         flightType,
         startedAt: `${date}T${startTime}:00`,
-        endAt:     endTime ? `${date}T${endTime}:00` : null,
+        endAt:     endTime ? `${endDateFor(date, startTime, endTime)}T${endTime}:00` : null,
         notes:     notes.trim() || null,
       });
       const res = await api.get<PagedResponse<FlightLog>>("/flights?page=0&size=10");
@@ -446,8 +464,6 @@ export default function FlightsPage() {
       setSubmitting(false);
     }
   }
-
-  const recentFlights = flights.slice(0, 5);
 
   // ── Filters ──
   const [filterSearch, setFilterSearch] = useState("");
@@ -687,50 +703,6 @@ export default function FlightsPage() {
                   <span style={{ color: "#5a7a9a" }}>Obs: </span>
                   <span style={{ color: "#c8d6e5" }}>{notes}</span>
                 </div>
-              )}
-            </div>
-          </div>
-
-          {/* Logs recentes */}
-          <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
-            <div className="px-4 py-2.5" style={{ borderBottom: "1px solid #1c2a3a" }}>
-              <span className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>
-                Logs Recentes
-              </span>
-            </div>
-            <div className="px-4 py-1">
-              {loading ? (
-                <SkeletonRows rows={5} />
-              ) : recentFlights.length === 0 ? (
-                <p className="py-8 text-center text-[11px] font-mono tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
-                  Nenhum voo registrado
-                </p>
-              ) : (
-                recentFlights.map((f) => {
-                  const mins = f.endAt ? calcDurationMins(f.startedAt, f.endAt) : null;
-                  return (
-                    <div
-                      key={f.id}
-                      className="grid items-center gap-3 py-2.5"
-                      style={{ gridTemplateColumns: "68px 1fr 1.2fr auto auto auto", borderBottom: "1px solid #111823" }}
-                    >
-                      <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>
-                        {formatTime(f.startedAt)}
-                      </div>
-                      <div className="font-mono text-sm font-bold truncate" style={{ color: "#c8d6e5" }}>
-                        {f.pilotCallsign}
-                      </div>
-                      <div className="font-mono text-[10px] truncate" style={{ color: "#5a7a9a" }}>
-                        {f.pilotName}
-                      </div>
-                      <div><TypeBadge type={f.flightType} /></div>
-                      <div className="font-mono text-sm font-bold" style={{ color: "#e8c97e" }}>
-                        {formatMins(mins)}
-                      </div>
-                      <div><StatusBadge status={f.flightStatus} /></div>
-                    </div>
-                  );
-                })
               )}
             </div>
           </div>
