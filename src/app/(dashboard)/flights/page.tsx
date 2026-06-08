@@ -520,7 +520,7 @@ export default function FlightsPage() {
       </div>
 
       {/* Split layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
 
         {/* LEFT — Form */}
         <div className="rounded-lg overflow-hidden" style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}>
