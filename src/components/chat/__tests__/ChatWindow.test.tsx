@@ -1,6 +1,7 @@
 import React from "react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { ChatWindow } from "../ChatWindow";
+import { api } from "@/lib/api";
 
 // jsdom does not implement scrollIntoView
 window.HTMLElement.prototype.scrollIntoView = jest.fn();
@@ -48,21 +49,17 @@ const historyMessages = [
 ];
 
 jest.mock("@/lib/api", () => ({
-  api: {
-    get: jest.fn().mockResolvedValue([]),
-  },
+  api: { get: jest.fn() },
 }));
 
 // ── Tests ─────────────────────────────────────────────────────────────────
 
 describe("ChatWindow", () => {
-  let mockApiGet: jest.Mock;
+  const mockApiGet = jest.mocked(api.get);
 
   beforeEach(() => {
     jest.clearAllMocks();
     capturedSubscribeCb = null;
-    const { api } = require("@/lib/api");
-    mockApiGet = api.get;
     mockApiGet.mockResolvedValue(historyMessages);
   });
 
