@@ -137,7 +137,9 @@ function EditOfficerModal({
     setError(null);
     try {
       const updated = await api.patch<Officer>(`/officers/${officer.id}`, {
-        rank, units: unit ? [unit] : [], status,
+        rank,
+        units: unit ? [{ unit, unitRankId: null }] : [],
+        status,
         badgeNumber: badgeNum,
       });
       onSaved(updated);
