@@ -238,7 +238,7 @@ function FichaModal({ officer, onClose, onSaved }: {
 function EditUnitsModal({ officer, onClose, onSaved }: {
   officer: Officer; onClose: () => void; onSaved: (o: Officer) => void;
 }) {
-  const [selected, setSelected] = useState<Set<PoliceUnit>>(new Set(officer.units ?? []));
+  const [selected, setSelected] = useState<Set<PoliceUnit>>(new Set((officer.unitNames ?? []) as PoliceUnit[]));
   const [saving,   setSaving]   = useState(false);
   const [error,    setError]    = useState<string | null>(null);
 
@@ -701,12 +701,15 @@ export default function OfficerProfilePage() {
               style={{background:rs.bg,color:rs.color,border:`1px solid ${rs.border}`}}>
               {RANK_LABEL[officer.rank]}
             </span>
-            {(officer.units && officer.units.length > 0) ? officer.units.map((u) => (
-              <span key={u} className="text-[9px] font-mono tracking-[1px] uppercase px-2 py-1 rounded"
-                style={{background:UNIT_STYLES[u].bg,color:UNIT_STYLES[u].color,border:`1px solid ${UNIT_STYLES[u].border}`}}>
-                {u}
-              </span>
-            )) : (
+            {(officer.unitNames && officer.unitNames.length > 0) ? officer.unitNames.map((u) => {
+              const us = UNIT_STYLES[u as PoliceUnit];
+              return (
+                <span key={u} className="text-[9px] font-mono tracking-[1px] uppercase px-2 py-1 rounded"
+                  style={{background:us?.bg,color:us?.color,border:`1px solid ${us?.border}`}}>
+                  {u}
+                </span>
+              );
+            }) : (
               <span className="text-[9px] font-mono tracking-[1px] uppercase px-2 py-1 rounded"
                 style={{background:"#1a1c2a",color:"#5a7a9a",border:"1px solid #2a3a5a44"}}>
                 LSPD
