@@ -147,7 +147,7 @@ export default function RegisterPage() {
     if (officer.discordId)       setDiscordId(officer.discordId);
     if (officer.profileImageUrl) setProfileImageUrl(officer.profileImageUrl);
     setRank(officer.rank);
-    if (officer.units && officer.units.length > 0) setUnit(officer.units[0] as PoliceUnit);
+    if (officer.unitNames && officer.unitNames.length > 0) setUnit(officer.unitNames[0] as PoliceUnit);
     setShowSuggestions(false);
   }
   function onNameChange(val: string) {

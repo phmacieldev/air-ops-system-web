@@ -145,13 +145,28 @@ export interface OfficerWeapon {
   serial: string;
 }
 
+export interface UnitMembership {
+  unit: string;
+  unitRankId: string | null;
+  unitRankName: string | null;
+}
+
+export interface UnitRank {
+  id: string;
+  name: string;
+  hierarchyLevel: number;
+  description: string;
+  unit: string;
+}
+
 export interface Officer {
   id: string;
   fullName: string;
   callsign: string;
   profileImageUrl: string | null;
   rank: PoliceRank;
-  units: PoliceUnit[];
+  units: UnitMembership[];
+  unitNames: string[];
   status: OfficerStatus;
   discordId: string;
   badgeNumber: number | null;

@@ -114,7 +114,7 @@ function EditOfficerModal({
   onSaved: (updated: Officer) => void;
 }) {
   const [rank,        setRank]        = useState<PoliceRank>(officer.rank);
-  const [unit,        setUnit]        = useState<PoliceUnit | "">((officer.units && officer.units.length === 1) ? officer.units[0] : "");
+  const [unit,        setUnit]        = useState<PoliceUnit | "">((officer.unitNames && officer.unitNames.length === 1) ? officer.unitNames[0] as PoliceUnit : "");
   const [status,      setStatus]      = useState<OfficerStatus>(officer.status);
   const [badgeInput,  setBadgeInput]  = useState<string>(officer.badgeNumber != null ? String(officer.badgeNumber) : "");
   const [saving,      setSaving]      = useState(false);
@@ -340,7 +340,7 @@ export default function PoliceRosterPage() {
   const filtered = sorted.filter((o) => {
     const q = search.toLowerCase();
     const matchSearch = !q || o.callsign.toLowerCase().includes(q) || o.fullName.toLowerCase().includes(q);
-    const matchUnit   = !filterUnit || (o.units ?? []).includes(filterUnit as PoliceUnit);
+    const matchUnit   = !filterUnit || (o.unitNames ?? []).includes(filterUnit);
     const matchRank   = !filterRank || o.rank === filterRank;
     return matchSearch && matchUnit && matchRank;
   });
@@ -446,7 +446,7 @@ export default function PoliceRosterPage() {
         ) : (
           filtered.map((o, i) => {
             const rs     = getRankStyle(o.rank);
-            const primaryUnit = (o.units && o.units.length > 0) ? o.units[0] : null;
+            const primaryUnit = (o.unitNames && o.unitNames.length > 0) ? o.unitNames[0] as PoliceUnit : null;
             const us     = primaryUnit ? UNIT_STYLES[primaryUnit] : null;
             const ss     = STATUS_STYLES[o.status] ?? { label: o.status, color: "#5a7a9a" };
             const isLast = i === filtered.length - 1;
@@ -477,11 +477,11 @@ export default function PoliceRosterPage() {
                     </span>
                   </div>
                   <div className="flex flex-wrap gap-1">
-                    {(o.units && o.units.length > 0) ? o.units.map((u) => {
-                      const ust = UNIT_STYLES[u];
+                    {(o.unitNames && o.unitNames.length > 0) ? o.unitNames.map((u) => {
+                      const ust = UNIT_STYLES[u as PoliceUnit];
                       return (
                         <span key={u} className="text-[9px] font-mono tracking-[1px] uppercase px-2 py-0.5 rounded"
-                          style={{ background: ust.bg, color: ust.color, border: `1px solid ${ust.border}` }}>
+                          style={{ background: ust?.bg, color: ust?.color, border: `1px solid ${ust?.border}` }}>
                           {u}
                         </span>
                       );

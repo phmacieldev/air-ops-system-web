@@ -36,7 +36,7 @@ export function UnitDashboard({ unit }: { unit: string }) {
     }).finally(() => setLoading(false));
   }, [unit]);
 
-  const unitOfficers = officers.filter((o) => (o.units ?? []).includes(unit as PoliceUnit));
+  const unitOfficers = officers.filter((o) => (o.unitNames ?? []).includes(unit));
   const active       = unitOfficers.filter((o) => o.status === "ACTIVE").length;
   const inactive     = unitOfficers.filter((o) => o.status !== "ACTIVE").length;
   const total        = unitOfficers.length;

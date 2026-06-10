@@ -39,13 +39,13 @@ export function OfficerProvider({ children }: { children: React.ReactNode }) {
 
   function load() {
     if (!token) { setState(s => ({ ...s, loading: false })); return; }
-    api.get<{ id: string; rank: PoliceRank; units: PoliceUnit[]; badgeNumber: number | null }>("/officers/me", 60)
+    api.get<{ id: string; rank: PoliceRank; unitNames: string[]; badgeNumber: number | null }>("/officers/me", 60)
       .then((o) => setState({
         officerId:   o.id,
         rank:        o.rank,
-        units:       o.units ?? [],
+        units:       (o.unitNames ?? []) as PoliceUnit[],
         badgeNumber: o.badgeNumber,
-        canApprove:  (RANK_ORDER[o.rank] ?? 0) >= 10,
+        canApprove:  (RANK_ORDER[o.rank] ?? 0) >= 9,
         isCommand:   o.badgeNumber != null && COMMAND_BADGES.includes(o.badgeNumber),
         loading:     false,
       }))
