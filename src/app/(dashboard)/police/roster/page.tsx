@@ -137,7 +137,9 @@ function EditOfficerModal({
     setError(null);
     try {
       const updated = await api.patch<Officer>(`/officers/${officer.id}`, {
-        rank, units: unit ? [unit] : [], status,
+        rank,
+        units: unit ? [{ unit, unitRankId: null }] : [],
+        status,
         badgeNumber: badgeNum,
       });
       onSaved(updated);
@@ -168,7 +170,9 @@ function EditOfficerModal({
         <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #1c2a3a" }}>
           <div>
             <div className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>Editar Oficial</div>
-            <div className="font-mono text-sm font-bold mt-0.5" style={{ color: rs.color }}>{officer.callsign}</div>
+            <div className="font-mono text-sm font-bold mt-0.5" style={{ color: rs.color }}>
+              {officer.badgeNumber != null ? `#${officer.badgeNumber}` : officer.fullName}
+            </div>
             <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{officer.fullName}</div>
           </div>
           <button onClick={onClose} className="font-mono text-lg px-1" style={{ color: "#5a7a9a" }}>✕</button>
@@ -430,10 +434,10 @@ export default function PoliceRosterPage() {
         <div className="hidden md:grid px-4 py-2 text-[9px] font-mono tracking-[1.5px] uppercase"
           style={{
             color: "#8a9ab8", borderBottom: "1px solid #1c2a3a",
-            gridTemplateColumns: canEdit ? "40px 56px 1fr 1.4fr 1.2fr 0.8fr 0.9fr 48px" : "40px 56px 1fr 1.4fr 1.2fr 0.8fr 0.9fr",
+            gridTemplateColumns: canEdit ? "40px 56px 1.4fr 1.2fr 0.8fr 0.9fr 48px" : "40px 56px 1.4fr 1.2fr 0.8fr 0.9fr",
             gap: "12px",
           }}>
-          <div /><div>Badge</div><div>Callsign</div><div>Nome</div><div>Patente</div><div>Unidade</div><div>Status</div>
+          <div /><div>Badge</div><div>Nome</div><div>Patente</div><div>Unidade</div><div>Status</div>
           {canEdit && <div />}
         </div>
 
@@ -461,14 +465,13 @@ export default function PoliceRosterPage() {
                 {/* Desktop */}
                 <div className="hidden md:grid px-4 py-3 items-center"
                   style={{
-                    gridTemplateColumns: canEdit ? "40px 56px 1fr 1.4fr 1.2fr 0.8fr 0.9fr 48px" : "40px 56px 1fr 1.4fr 1.2fr 0.8fr 0.9fr",
+                    gridTemplateColumns: canEdit ? "40px 56px 1.4fr 1.2fr 0.8fr 0.9fr 48px" : "40px 56px 1.4fr 1.2fr 0.8fr 0.9fr",
                     gap: "12px",
                   }}>
                   <Avatar officer={o} />
                   <div className="font-mono text-sm font-bold" style={{ color: rs.color }}>
                     {o.badgeNumber != null ? `#${o.badgeNumber}` : <span style={{ color: "#3a4a5a" }}>—</span>}
                   </div>
-                  <div className="font-mono text-sm font-bold truncate" style={{ color: rs.color }}>{o.callsign}</div>
                   <div className="font-mono text-sm truncate" style={{ color: "#c8d6e5" }}>{o.fullName}</div>
                   <div>
                     <span className="text-[9px] font-mono tracking-[1px] uppercase px-2 py-0.5 rounded"
@@ -515,10 +518,9 @@ export default function PoliceRosterPage() {
                   <Avatar officer={o} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
-                      {o.badgeNumber != null && (
-                        <span className="font-mono text-xs font-bold" style={{ color: rs.color }}>#{o.badgeNumber}</span>
-                      )}
-                      <span className="font-mono text-sm font-bold" style={{ color: rs.color }}>{o.callsign}</span>
+                      <span className="font-mono text-sm font-bold" style={{ color: rs.color }}>
+                        {o.badgeNumber != null ? `#${o.badgeNumber}` : o.callsign}
+                      </span>
                       <span className="text-[9px] font-mono tracking-[1px] uppercase px-1.5 py-0.5 rounded"
                         style={{ background: rs.bg, color: rs.color, border: `1px solid ${rs.border}` }}>
                         {RANK_LABEL[o.rank]}
