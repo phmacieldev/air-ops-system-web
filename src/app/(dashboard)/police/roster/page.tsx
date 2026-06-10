@@ -170,7 +170,9 @@ function EditOfficerModal({
         <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: "1px solid #1c2a3a" }}>
           <div>
             <div className="text-[11px] font-mono tracking-[1.5px] uppercase" style={{ color: "#e8c97e" }}>Editar Oficial</div>
-            <div className="font-mono text-sm font-bold mt-0.5" style={{ color: rs.color }}>{officer.callsign}</div>
+            <div className="font-mono text-sm font-bold mt-0.5" style={{ color: rs.color }}>
+              {officer.badgeNumber != null ? `#${officer.badgeNumber}` : officer.fullName}
+            </div>
             <div className="font-mono text-[11px]" style={{ color: "#5a7a9a" }}>{officer.fullName}</div>
           </div>
           <button onClick={onClose} className="font-mono text-lg px-1" style={{ color: "#5a7a9a" }}>✕</button>
