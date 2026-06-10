@@ -113,8 +113,9 @@ function EditOfficerModal({
   onClose: () => void;
   onSaved: (updated: Officer) => void;
 }) {
+  const originalUnit = (officer.unitNames && officer.unitNames.length === 1) ? officer.unitNames[0] as PoliceUnit : "" as PoliceUnit | "";
   const [rank,        setRank]        = useState<PoliceRank>(officer.rank);
-  const [unit,        setUnit]        = useState<PoliceUnit | "">((officer.unitNames && officer.unitNames.length === 1) ? officer.unitNames[0] as PoliceUnit : "");
+  const [unit,        setUnit]        = useState<PoliceUnit | "">(originalUnit);
   const [status,      setStatus]      = useState<OfficerStatus>(officer.status);
   const [badgeInput,  setBadgeInput]  = useState<string>(officer.badgeNumber != null ? String(officer.badgeNumber) : "");
   const [saving,      setSaving]      = useState(false);
@@ -136,12 +137,9 @@ function EditOfficerModal({
     setSaving(true);
     setError(null);
     try {
-      const updated = await api.patch<Officer>(`/officers/${officer.id}`, {
-        rank,
-        units: unit ? [{ unit, unitRankId: null }] : [],
-        status,
-        badgeNumber: badgeNum,
-      });
+      const payload: Record<string, unknown> = { rank, status, badgeNumber: badgeNum };
+      if (unit !== originalUnit) payload.units = unit ? [{ unit, unitRankId: null }] : [];
+      const updated = await api.patch<Officer>(`/officers/${officer.id}`, payload);
       onSaved(updated);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Erro ao salvar");
