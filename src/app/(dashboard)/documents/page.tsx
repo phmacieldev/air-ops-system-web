@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { UnitGate } from "@/components/UnitGate";
 import { ClipboardList, BookOpen, ClipboardCheck, Target, Shield, Eye, ExternalLink } from "lucide-react";
 
 const DOCS = [
@@ -120,6 +121,7 @@ function DocCard({ doc }: { doc: typeof DOCS[number] }) {
 
 export default function DocumentsPage() {
   return (
+    <UnitGate unit="ASD">
     <div className="p-3 md:p-6 space-y-4 min-h-full" style={{ background: "#0a0d12" }}>
 
       {/* Page header */}
@@ -156,5 +158,6 @@ export default function DocumentsPage() {
       </div>
 
     </div>
+    </UnitGate>
   );
 }

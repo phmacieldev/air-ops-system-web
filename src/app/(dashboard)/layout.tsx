@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { OfficerProvider } from "@/context/OfficerContext";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { NotificationBell } from "@/components/ui/NotificationBell";
 import { Menu, X } from "lucide-react";
@@ -33,7 +34,17 @@ export default function DashboardLayout({
   if (!isAuthenticated) return null;
 
   return (
-    <div className="flex min-h-screen" style={{ background: "#0a0d12" }}>
+    <OfficerProvider>
+    <div className="flex h-screen overflow-hidden" style={{
+      background: "#0a0d12",
+      backgroundImage: "url('https://cdn.wallpapersafari.com/5/9/1K78O9.jpg')",
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+      backgroundAttachment: "fixed",
+    }}>
+    {/* dark overlay to keep readability */}
+    <div className="fixed inset-0 pointer-events-none" style={{ background: "rgba(10,13,18,0.82)", zIndex: 0 }} />
+    <div className="relative flex h-screen w-full overflow-hidden" style={{ zIndex: 1 }}>
 
       {/* Sidebar desktop — oculta abaixo de md */}
       <div className="hidden md:flex">
@@ -84,16 +95,18 @@ export default function DashboardLayout({
             className="flex-1 font-mono text-[11px] font-bold tracking-widest uppercase"
             style={{ color: "#e8c97e" }}
           >
-            Air Support Division
+            Los Santos Police Dept.
           </span>
           <NotificationBell />
         </div>
 
-        <main className="flex-1 flex flex-col overflow-auto">
+        <main className="flex-1 overflow-y-auto">
           {children}
         </main>
       </div>
 
     </div>
+    </div>
+    </OfficerProvider>
   );
 }

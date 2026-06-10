@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { UnitGate } from "@/components/UnitGate";
 import { api } from "@/lib/api";
 import { SkeletonRows } from "@/components/ui/Skeleton";
 import { Pilot, PerformanceReport, PagedResponse } from "@/types";
@@ -99,6 +100,7 @@ function Avatar({ pilot, size = 32 }: { pilot: Pilot; size?: number }) {
 }
 
 export default function PilotsPage() {
+
   const router = useRouter();
   const [pilots, setPilots]   = useState<Pilot[]>([]);
   const [reports, setReports] = useState<PerformanceReport[]>([]);
@@ -134,6 +136,7 @@ export default function PilotsPage() {
   );
 
   return (
+    <UnitGate unit="ASD">
     <div className="p-3 md:p-6 space-y-4 min-h-full" style={{ background: "#0a0d12" }}>
 
       {/* Header */}
@@ -292,5 +295,6 @@ export default function PilotsPage() {
         )}
       </div>
     </div>
+    </UnitGate>
   );
 }

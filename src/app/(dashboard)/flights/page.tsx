@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { UnitGate } from "@/components/UnitGate";
 import { api } from "@/lib/api";
 import { SkeletonRows } from "@/components/ui/Skeleton";
 import { FlightLog, PagedResponse } from "@/types";
@@ -347,6 +348,7 @@ function EditFlightModal({
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default function FlightsPage() {
+
   const { user } = useAuth();
   const [flights, setFlights]       = useState<FlightLog[]>([]);
   const [loading, setLoading]       = useState(true);
@@ -477,6 +479,7 @@ export default function FlightsPage() {
   });
 
   return (
+    <UnitGate unit="ASD">
     <div className="p-3 md:p-6 space-y-4 min-h-full" style={{ background: "#0a0d12" }}>
 
       {/* Edit modal */}
@@ -905,5 +908,6 @@ export default function FlightsPage() {
       </div>
 
     </div>
+    </UnitGate>
   );
 }

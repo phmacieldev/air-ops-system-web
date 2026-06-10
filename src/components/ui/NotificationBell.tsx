@@ -4,39 +4,45 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Bell } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useOfficer } from "@/context/OfficerContext";
 import { api } from "@/lib/api";
 
-type Counts = { flights: number; reports: number };
+type Counts = { flights: number; reports: number; rolecall: number };
 
 export function NotificationBell() {
   const { user } = useAuth();
-  const [counts, setCounts] = useState<Counts>({ flights: 0, reports: 0 });
+  const { canApprove, isCommand } = useOfficer();
+  const [counts, setCounts] = useState<Counts>({ flights: 0, reports: 0, rolecall: 0 });
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  const canSeeFlights  = user?.role === "LEAD" || user?.role === "ADM";
-  const canSeeReports  = user?.role === "LEAD" || user?.role === "ADM" || user?.role === "SUPERVISOR";
+  const canSeeFlights   = user?.role === "LEAD" || user?.role === "ADM";
+  const canSeeReports   = user?.role === "LEAD" || user?.role === "ADM" || user?.role === "SUPERVISOR";
+  const canSeeRolecall  = canApprove || isCommand;
 
   useEffect(() => {
-    if (!canSeeFlights && !canSeeReports) return;
+    if (!canSeeFlights && !canSeeReports && !canSeeRolecall) return;
 
     async function fetchCounts() {
-      const [f, r] = await Promise.all([
+      const [f, r, rc] = await Promise.all([
         canSeeFlights
-          ? api.get<{ count: number }>("/flights/pending/count")
+          ? api.get<{ count: number }>("/flights/pending/count").catch(() => ({ count: 0 }))
           : Promise.resolve({ count: 0 }),
         canSeeReports
-          ? api.get<{ count: number }>("/reports/pending/count")
+          ? api.get<{ count: number }>("/reports/pending/count").catch(() => ({ count: 0 }))
+          : Promise.resolve({ count: 0 }),
+        canSeeRolecall
+          ? api.get<{ count: number }>("/rolecall/pending/count", 30).catch(() => ({ count: 0 }))
           : Promise.resolve({ count: 0 }),
       ]);
-      setCounts({ flights: f.count, reports: r.count });
+      setCounts({ flights: f.count, reports: r.count, rolecall: rc.count });
     }
 
     fetchCounts();
     const id = setInterval(fetchCounts, 60_000);
     return () => clearInterval(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.role]);
+  }, [user?.role, canApprove, isCommand]);
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -46,9 +52,12 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", onClickOutside);
   }, []);
 
-  if (!canSeeFlights && !canSeeReports) return null;
+  if (!canSeeFlights && !canSeeReports && !canSeeRolecall) return null;
 
-  const total = (canSeeFlights ? counts.flights : 0) + (canSeeReports ? counts.reports : 0);
+  const total =
+    (canSeeFlights  ? counts.flights  : 0) +
+    (canSeeReports  ? counts.reports  : 0) +
+    (canSeeRolecall ? counts.rolecall : 0);
 
   return (
     <div ref={ref} className="relative">
@@ -77,7 +86,7 @@ export function NotificationBell() {
 
       {open && (
         <div
-          className="absolute right-0 top-full mt-2 w-56 rounded-lg z-50 overflow-hidden"
+          className="absolute right-0 top-full mt-2 w-60 rounded-lg z-50 overflow-hidden"
           style={{ background: "#0d1117", border: "1px solid #1c2a3a" }}
         >
           <div className="px-3 py-2" style={{ borderBottom: "1px solid #1c2a3a" }}>
@@ -85,6 +94,30 @@ export function NotificationBell() {
               Pendentes
             </span>
           </div>
+
+          {canSeeRolecall && (
+            <Link
+              href="/police/rolecall"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-between px-3 py-2.5"
+              style={{ borderBottom: "1px solid #111823" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#111823")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              <span className="font-mono text-[11px]" style={{ color: "#c8d6e5" }}>
+                Role Call
+              </span>
+              <span
+                className="font-mono text-[11px] font-bold px-1.5 py-0.5 rounded"
+                style={{
+                  background: counts.rolecall > 0 ? "#1a1020" : "#1c2a3a",
+                  color:      counts.rolecall > 0 ? "#c084fc" : "#5a7a9a",
+                }}
+              >
+                {counts.rolecall}
+              </span>
+            </Link>
+          )}
 
           {canSeeFlights && (
             <Link
