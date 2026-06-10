@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { UnitGate } from "@/components/UnitGate";
 import { api } from "@/lib/api";
 import { SkeletonRows } from "@/components/ui/Skeleton";
 import { FlightLog, PerformanceReport, PagedResponse } from "@/types";
@@ -456,6 +457,7 @@ function ReportRow({
 // ── Main page ─────────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
+
   const { user } = useAuth();
   const [reports, setReports]       = useState<PerformanceReport[]>([]);
   const [flights, setFlights]       = useState<FlightLog[]>([]);
@@ -581,6 +583,7 @@ export default function ReportsPage() {
   const empty = !loading && reports.length === 0;
 
   return (
+    <UnitGate unit="ASD">
     <div className="p-3 md:p-6 space-y-4 min-h-full overflow-x-hidden" style={{ background: "#0a0d12" }}>
 
       {/* Edit modal */}
@@ -915,5 +918,6 @@ export default function ReportsPage() {
       </div>
 
     </div>
+    </UnitGate>
   );
 }

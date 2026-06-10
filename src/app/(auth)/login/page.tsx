@@ -43,7 +43,7 @@ export default function LoginPage() {
     try {
       const res = await api.post<{ token: string }>("/auth/login", { email, password });
       await login(res.token);
-      router.push("/dashboard");
+      router.push("/police/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Credenciais inválidas");
     } finally {
@@ -60,32 +60,21 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="flex flex-col items-center gap-4">
-          <svg width="60" height="66" viewBox="0 0 40 44" fill="none" aria-hidden="true">
-            <path
-              d="M20 2L4 8V22C4 32 11 40 20 43C29 40 36 32 36 22V8L20 2Z"
-              fill="#1c2a3a" stroke="#e8c97e" strokeWidth="1.5"
-            />
-            <path
-              d="M20 9L11 12.5V21C11 26.5 14.8 31.5 20 33.5C25.2 31.5 29 26.5 29 21V12.5L20 9Z"
-              fill="#0d1117" stroke="#e8c97e44" strokeWidth="0.8"
-            />
-            <text
-              x="20" y="25" textAnchor="middle"
-              fontFamily="monospace" fontSize="10"
-              fill="#e8c97e" letterSpacing="1"
-            >
-              ASD
-            </text>
-            <path d="M14 19L20 14L26 19" stroke="#e8c97e" strokeWidth="1.2" fill="none"/>
-            <line x1="20" y1="14" x2="20" y2="28" stroke="#e8c97e" strokeWidth="1" strokeDasharray="2,2"/>
-          </svg>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://static.wikia.nocookie.net/revorz/images/5/57/Lspdlogo.png/revision/latest/scale-to-width-down/1200?cb=20231105110531&path-prefix=tr"
+            alt="LSPD Logo"
+            width={140}
+            height={140}
+            style={{ objectFit: "contain", filter: "drop-shadow(0 0 18px #4a90e255)" }}
+          />
 
           <div className="text-center">
             <h1
               className="font-mono text-2xl font-bold tracking-widest uppercase"
               style={{ color: "#e8c97e" }}
             >
-              Air Support Division
+              Unified Police Department
             </h1>
             <p
               className="font-mono text-[11px] tracking-[3px] uppercase mt-1"
@@ -195,7 +184,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center font-mono text-[9px] tracking-[2px] uppercase" style={{ color: "#5a7a9a" }}>
-          Acesso restrito a membros da ASD
+          Acesso restrito a membros da LSPD
         </p>
 
       </div>

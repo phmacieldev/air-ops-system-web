@@ -95,6 +95,104 @@ export interface Certification {
   notes: string | null;
 }
 
+export interface Aviso {
+  id: string;
+  content: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface UnitAviso {
+  id: string;
+  unit: string;
+  content: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface Mandado {
+  id: string;
+  suspectName: string;
+  description: string;
+  status: "ACTIVE" | "EXECUTED" | "CANCELLED";
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface Briefing {
+  id: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  announcements: string[];
+  topics: string[];
+  notices: string[];
+  createdBy: string;
+  createdAt: string;
+}
+
+export type PoliceRank =
+  | "CADET" | "SOLO_CADET" | "OFFICER" | "OFFICER_1" | "OFFICER_2" | "OFFICER_3"
+  | "SENIOR_OFFICER" | "CORPORAL" | "SERGEANT" | "LIEUTENANT" | "CAPTAIN"
+  | "ASSISTANT_CHIEF" | "CHIEF" | "COMMISSIONER";
+
+export type PoliceUnit = "CID" | "HEAT" | "ASD" | "METRO" | "MU" | "FTO";
+
+export type OfficerStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED" | "TRAINING";
+
+export interface OfficerWeapon {
+  class: "CLASSE_1" | "CLASSE_2" | "CLASSE_3" | "TASER";
+  serial: string;
+}
+
+export interface Officer {
+  id: string;
+  fullName: string;
+  callsign: string;
+  profileImageUrl: string | null;
+  rank: PoliceRank;
+  units: PoliceUnit[];
+  status: OfficerStatus;
+  discordId: string;
+  badgeNumber: number | null;
+  phone: string | null;
+  dna: string | null;
+  fingerprint: string | null;
+  weapons: OfficerWeapon[];
+  notes: string | null;
+  employer: string;
+  asd: AsdProfile | null;
+}
+
+export interface AsdProfile {
+  pilotId: string;
+  asdRank: string | null;
+  asdCallsign: string | null;
+  flightMinutes: number;
+  accumulatedScore: number;
+  asdStatus: string | null;
+}
+
+export type RoleCallType   = "PROMOTION" | "UNIT" | "BADGE" | "STATUS";
+export type RoleCallStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface RoleCallRequest {
+  id: string;
+  officerId: string;
+  officerName: string;
+  officerCallsign: string;
+  officerProfileImageUrl: string | null;
+  type: RoleCallType;
+  requestedValue: string;
+  currentValue: string | null;
+  status: RoleCallStatus;
+  reason: string | null;
+  reviewNote: string | null;
+  reviewedBy: string | null;
+  createdAt: string;
+  reviewedAt: string | null;
+}
+
 export interface PagedResponse<T> {
   data: T[];
   pagination: {

@@ -3,9 +3,11 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { UnitGate } from "@/components/UnitGate";
 import { api } from "@/lib/api";
-import { Pilot, FlightLog, PerformanceReport, PagedResponse } from "@/types";
+import { Pilot, FlightLog, PerformanceReport, PagedResponse, UnitAviso } from "@/types";
 import { Skeleton, SkeletonCards, SkeletonRows } from "@/components/ui/Skeleton";
+import { UnitAvisosSection } from "@/components/units/UnitAvisosSection";
 
 function formatDuration(startedAt: string, endAt: string | null) {
   if (!endAt) return "—";
@@ -119,21 +121,28 @@ function PilotAvatar({ name, callsign, photoUrl, size = 32 }: {
 }
 
 export default function DashboardPage() {
+
   const { user } = useAuth();
   const [pilots,  setPilots]  = useState<Pilot[]>([]);
   const [flights, setFlights] = useState<FlightLog[]>([]);
   const [reports, setReports] = useState<PerformanceReport[]>([]);
+  const [avisos,  setAvisos]  = useState<UnitAviso[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const canManageAvisos =
+    user?.role === "LEAD" || user?.role === "SUPERVISOR" || user?.role === "ADM";
 
   useEffect(() => {
     Promise.all([
       api.get<Pilot[]>("/pilots", 60),
       api.get<PagedResponse<FlightLog>>("/flights?page=0&size=5", 15),
       api.get<PagedResponse<PerformanceReport>>("/reports?page=0&size=1000", 30),
-    ]).then(([p, fl, rep]) => {
+      api.get<UnitAviso[]>("/unit-avisos?unit=ASD", 30).catch(() => [] as UnitAviso[]),
+    ]).then(([p, fl, rep, av]) => {
       setPilots(p);
       setFlights(fl.data);
       setReports(rep.data);
+      setAvisos(av);
     }).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
@@ -165,6 +174,7 @@ export default function DashboardPage() {
   ];
 
   return (
+    <UnitGate unit="ASD">
     <div className="p-3 md:p-6 space-y-4 min-h-full" style={{ background: "#0a0d12" }}>
 
       {/* Page header */}
@@ -220,6 +230,19 @@ export default function DashboardPage() {
           </div>
         ))}
       </div>}
+
+      {/* Avisos ASD */}
+      {!loading && (
+        <UnitAvisosSection
+          unit="ASD"
+          avisos={avisos}
+          loading={false}
+          canManage={canManageAvisos}
+          onAdd={(a) => setAvisos((prev) => [a, ...prev])}
+          onEdit={(a) => setAvisos((prev) => prev.map((x) => (x.id === a.id ? a : x)))}
+          onDelete={(id) => setAvisos((prev) => prev.filter((x) => x.id !== id))}
+        />
+      )}
 
       {/* Two panels */}
       {!loading && <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -335,5 +358,6 @@ export default function DashboardPage() {
 
       </div>}
     </div>
+    </UnitGate>
   );
 }

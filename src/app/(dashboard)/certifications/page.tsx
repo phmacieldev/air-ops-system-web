@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { UnitGate } from "@/components/UnitGate";
 import { api } from "@/lib/api";
 import { SkeletonRows } from "@/components/ui/Skeleton";
 import { Certification, CertificateType, HolderType, Pilot } from "@/types";
@@ -349,6 +350,7 @@ function IssueModal({
 // ── Page ──────────────────────────────────────────────────────────────────
 
 export default function CertificationsPage() {
+
   const { user } = useAuth();
   const [certs,   setCerts]   = useState<Certification[]>([]);
   const [pilots,  setPilots]  = useState<Pilot[]>([]);
@@ -388,6 +390,7 @@ export default function CertificationsPage() {
   });
 
   return (
+    <UnitGate unit="ASD">
     <div className="p-3 md:p-6 space-y-4 min-h-full" style={{ background: "#0a0d12" }}>
 
       {showIssue && (
@@ -565,5 +568,6 @@ export default function CertificationsPage() {
         )}
       </div>
     </div>
+    </UnitGate>
   );
 }
