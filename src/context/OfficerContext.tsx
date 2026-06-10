@@ -46,7 +46,7 @@ export function OfficerProvider({ children }: { children: React.ReactNode }) {
         units:       (o.unitNames ?? []) as PoliceUnit[],
         badgeNumber: o.badgeNumber,
         canApprove:  (RANK_ORDER[o.rank] ?? 0) >= 9,
-        isCommand:   (o.badgeNumber != null && COMMAND_BADGES.includes(o.badgeNumber)) || o.rank === 'COMMISSIONER',
+        isCommand:   (o.badgeNumber != null && COMMAND_BADGES.includes(o.badgeNumber)) || (RANK_ORDER[o.rank] ?? 0) >= 11,
         loading:     false,
       }))
       .catch(() => setState(s => ({ ...s, loading: false })));
