@@ -28,7 +28,7 @@ const GROUP_LABEL: Record<string, string> = {
 };
 
 const STATUS_COLOR: Record<string, string> = {
-  ACTIVE: "#3dd68c", INACTIVE: "#5a7a9a", SUSPENDED: "#e24b4a", TRAINING: "#e8c97e",
+  ACTIVE: "#3dd68c", INACTIVE: "#5a7a9a", SUSPENDED: "#e24b4a", TRAINING: "#e8c97e", ABSENT: "#f97316",
 };
 
 function getInitials(callsign: string) {

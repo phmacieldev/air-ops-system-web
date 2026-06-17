@@ -77,6 +77,7 @@ const STATUS_STYLES: Record<OfficerStatus, { label: string; color: string }> = {
   INACTIVE:  { label: "Inativo",     color: "#5a7a9a" },
   SUSPENDED: { label: "Suspenso",    color: "#e24b4a" },
   TRAINING:  { label: "Treinamento", color: "#e8c97e" },
+  ABSENT:    { label: "Ausente",     color: "#f97316" },
 };
 
 // ── Helpers ────────────────────────────────────────────────────────────────

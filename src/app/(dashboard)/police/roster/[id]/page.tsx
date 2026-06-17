@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
 import { Officer, OfficerWeapon, PoliceRank, PoliceUnit, OfficerStatus, RoleCallType, AsdProfile } from "@/types";
 import { tierForRank } from "@/lib/police/badges";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 
 // ── Constants ─────────────────────────────────────────────────────────────
 
@@ -29,9 +30,9 @@ const ALL_RANKS: PoliceRank[] = [
 ];
 
 const ALL_UNITS: PoliceUnit[] = ["CID","HEAT","ASD","METRO","MU","FTO"];
-const ALL_STATUSES: OfficerStatus[] = ["ACTIVE","INACTIVE","SUSPENDED","TRAINING"];
+const ALL_STATUSES: OfficerStatus[] = ["ACTIVE","INACTIVE","SUSPENDED","TRAINING","ABSENT"];
 const STATUS_LABEL: Record<OfficerStatus, string> = {
-  ACTIVE:"Ativo",INACTIVE:"Inativo",SUSPENDED:"Suspenso",TRAINING:"Treinamento",
+  ACTIVE:"Ativo",INACTIVE:"Inativo",SUSPENDED:"Suspenso",TRAINING:"Treinamento",ABSENT:"Ausente",
 };
 
 function getRankStyle(rank: PoliceRank) {
@@ -58,6 +59,7 @@ const STATUS_STYLES: Record<OfficerStatus,{label:string;color:string;bg:string}>
   INACTIVE: {label:"Inativo",  color:"#5a7a9a",bg:"#1a1c2a"},
   SUSPENDED:{label:"Suspenso", color:"#e24b4a",bg:"#2a1010"},
   TRAINING: {label:"Treinamento",color:"#e8c97e",bg:"#2a1f0a"},
+  ABSENT:   {label:"Ausente",  color:"#f97316",bg:"#2a1a0a"},
 };
 
 const WEAPON_CLASSES: { value: OfficerWeapon["class"]; label: string; color: string }[] = [
@@ -233,82 +235,6 @@ function FichaModal({ officer, onClose, onSaved }: {
   );
 }
 
-// ── Edit Units Modal (admin) ───────────────────────────────────────────────
-
-function EditUnitsModal({ officer, onClose, onSaved }: {
-  officer: Officer; onClose: () => void; onSaved: (o: Officer) => void;
-}) {
-  const [selected, setSelected] = useState<Set<PoliceUnit>>(new Set((officer.unitNames ?? []) as PoliceUnit[]));
-  const [saving,   setSaving]   = useState(false);
-  const [error,    setError]    = useState<string | null>(null);
-
-  function toggle(u: PoliceUnit) {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(u) ? next.delete(u) : next.add(u);
-      return next;
-    });
-  }
-
-  async function save() {
-    setSaving(true); setError(null);
-    try {
-      const updated = await api.patch<Officer>(`/officers/${officer.id}`, {
-        units: Array.from(selected),
-      });
-      onSaved(updated);
-    } catch (err: unknown) { setError(err instanceof Error ? err.message : "Erro ao salvar"); }
-    finally { setSaving(false); }
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{background:"rgba(0,0,0,0.75)"}}
-      onClick={(e) => e.target===e.currentTarget && onClose()}>
-      <div className="w-full max-w-sm rounded-lg overflow-hidden" style={{background:"#0d1117",border:"1px solid #1c2a3a"}}>
-        <div className="px-4 py-3 flex items-center justify-between" style={{borderBottom:"1px solid #1c2a3a"}}>
-          <span className="font-mono text-[11px] tracking-[1.5px] uppercase" style={{color:"#e8c97e"}}>Unidades do Oficial</span>
-          <button onClick={onClose} className="font-mono text-lg" style={{color:"#5a7a9a"}}>×</button>
-        </div>
-        <div className="p-4 space-y-3">
-          <p className="font-mono text-[10px]" style={{color:"#5a7a9a"}}>
-            Selecione as unidades. Sem seleção = apenas LSPD.
-          </p>
-          <div className="space-y-2">
-            {ALL_UNITS.map((u) => {
-              const style = UNIT_STYLES[u];
-              const active = selected.has(u);
-              return (
-                <button key={u} onClick={() => toggle(u)}
-                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors text-left"
-                  style={{
-                    background: active ? `${style.color}18` : "#0a0d12",
-                    border: active ? `1px solid ${style.color}66` : "1px solid #1c2a3a",
-                  }}>
-                  <div className="w-4 h-4 rounded flex items-center justify-center shrink-0"
-                    style={{background: active ? style.color : "transparent", border: `1px solid ${active ? style.color : "#3a4a5a"}`}}>
-                    {active && <span className="text-[10px] font-bold" style={{color:"#0a0d12"}}>✓</span>}
-                  </div>
-                  <span className="font-mono text-[11px] tracking-[1px] uppercase" style={{color: active ? style.color : "#5a7a9a"}}>
-                    {u}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          {error && <p className="font-mono text-[11px]" style={{color:"#e24b4a"}}>{error}</p>}
-          <div className="flex gap-2 pt-1">
-            <button onClick={onClose} className="flex-1 font-mono text-[11px] uppercase py-2 rounded" style={{background:"#1c2a3a",color:"#5a7a9a"}}>Cancelar</button>
-            <button onClick={save} disabled={saving} className="flex-1 font-mono text-[11px] uppercase py-2 rounded font-semibold"
-              style={{background:"#e8c97e",color:"#0a0d12",opacity:saving?0.6:1}}>
-              {saving?"Salvando...":"Salvar"}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Role Call Request Modal ────────────────────────────────────────────────
 
 function RoleCallModal({ officer, onClose }: {
@@ -318,31 +244,52 @@ function RoleCallModal({ officer, onClose }: {
   const [value,      setValue]      = useState("");
   const [badgeValue, setBadgeValue] = useState("");
   const [reason,     setReason]     = useState("");
+  const [absenceDate, setAbsenceDate] = useState("");
   const [saving,     setSaving]     = useState(false);
   const [done,       setDone]       = useState(false);
   const [error,      setError]      = useState<string|null>(null);
 
   const TYPE_OPTS: { value: RoleCallType; label: string; accent: string }[] = [
-    { value:"PROMOTION", label:"Promoção",  accent:"#c084fc" },
-    { value:"UNIT",      label:"Unidade",   accent:"#4a90e2" },
-    { value:"BADGE",     label:"Badge",     accent:"#e8c97e" },
-    { value:"STATUS",    label:"Status",    accent:"#3dd68c" },
+    { value:"PROMOTION",   label:"Promoção",   accent:"#c084fc" },
+    { value:"UNIT",        label:"Unidade",    accent:"#4a90e2" },
+    { value:"BADGE",       label:"Badge",      accent:"#e8c97e" },
+    { value:"STATUS",      label:"Status",     accent:"#3dd68c" },
+    { value:"ABSENCE",     label:"Ausência",   accent:"#f97316" },
+    { value:"RESIGNATION", label:"Demissão",   accent:"#e24b4a" },
   ];
 
   const accent = TYPE_OPTS.find((t)=>t.value===type)?.accent ?? "#e8c97e";
 
+  const canSubmit = type === "RESIGNATION"
+    ? true
+    : type === "ABSENCE"
+      ? !!absenceDate
+      : !!value;
+
   async function submit() {
-    if (!value) return;
+    if (!canSubmit) return;
     setSaving(true); setError(null);
     try {
+      let requestedValue = value;
+      let submitReason = reason.trim() || null;
+
+      if (type === "RESIGNATION") {
+        requestedValue = "DEMISSÃO";
+      } else if (type === "ABSENCE") {
+        requestedValue = absenceDate;
+        if (reason.trim()) {
+          submitReason = reason.trim();
+        }
+      }
+
       const requests: Promise<unknown>[] = [
         api.post(`/rolecall/officers/${officer.id}`, {
-          type, requestedValue: value, reason: reason.trim() || null,
+          type, requestedValue, reason: submitReason,
         }),
       ];
       if (type === "PROMOTION" && badgeValue.trim()) {
         requests.push(api.post(`/rolecall/officers/${officer.id}`, {
-          type: "BADGE", requestedValue: badgeValue.trim(), reason: reason.trim() || null,
+          type: "BADGE", requestedValue: badgeValue.trim(), reason: submitReason,
         }));
       }
       await Promise.all(requests);
@@ -368,7 +315,7 @@ function RoleCallModal({ officer, onClose }: {
             <div className="font-mono text-2xl" style={{color:"#3dd68c"}}>✓</div>
             <p className="font-mono text-sm" style={{color:"#c8d6e5"}}>Solicitação enviada!</p>
             <p className="font-mono text-[10px]" style={{color:"#5a7a9a"}}>
-              Um Lieutenant+ irá revisar em breve.
+              Um Sergeant+ irá revisar em breve.
             </p>
             <button onClick={onClose}
               className="font-mono text-[11px] uppercase px-4 py-2 rounded"
@@ -384,7 +331,7 @@ function RoleCallModal({ officer, onClose }: {
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {TYPE_OPTS.map((t) => (
-                  <button key={t.value} type="button" onClick={() => { setType(t.value); setValue(""); setBadgeValue(""); }}
+                  <button key={t.value} type="button" onClick={() => { setType(t.value); setValue(""); setBadgeValue(""); setAbsenceDate(""); }}
                     className="font-mono text-[10px] tracking-[1px] uppercase py-2 rounded text-left px-3"
                     style={{
                       background: type===t.value ? `${t.accent}18` : "#0a0d12",
@@ -398,119 +345,150 @@ function RoleCallModal({ officer, onClose }: {
             </div>
 
             {/* Valor */}
-            <div>
-              <label className="block font-mono text-[10px] tracking-[1px] uppercase mb-1" style={{color:"#5a7a9a"}}>
-                {type === "PROMOTION" ? "Nova patente" :
-                 type === "UNIT"      ? "Unidade"      :
-                 type === "BADGE"     ? "Número da badge" : "Novo status"}
-              </label>
+            {type !== "RESIGNATION" && type !== "ABSENCE" && (
+              <div>
+                <label className="block font-mono text-[10px] tracking-[1px] uppercase mb-1" style={{color:"#5a7a9a"}}>
+                  {type === "PROMOTION" ? "Nova patente" :
+                   type === "UNIT"      ? "Unidade"      :
+                   type === "BADGE"     ? "Número da badge" : "Novo status"}
+                </label>
 
-              {type === "PROMOTION" && (
-                <>
-                  <select value={value} onChange={(e) => { setValue(e.target.value); setBadgeValue(""); }} style={inputStyle} onFocus={focus} onBlur={blur}>
+                {type === "PROMOTION" && (
+                  <>
+                    <select value={value} onChange={(e) => { setValue(e.target.value); setBadgeValue(""); }} style={inputStyle} onFocus={focus} onBlur={blur}>
+                      <option value="">Selecione...</option>
+                      {ALL_RANKS.map((r) => (
+                        <option key={r} value={r}>{RANK_LABEL[r]}</option>
+                      ))}
+                    </select>
+                    {value && (() => {
+                      const tier = tierForRank(value as PoliceRank);
+                      if (!tier) return null;
+                      const badgeNum = parseInt(badgeValue);
+                      const badgeValid = badgeValue.trim() && !isNaN(badgeNum) && badgeNum >= tier.min && badgeNum <= tier.max;
+                      const badgeOutOfRange = badgeValue.trim() && !isNaN(badgeNum) && (badgeNum < tier.min || badgeNum > tier.max);
+                      return (
+                        <>
+                          <div className="mt-2 px-3 py-2.5 rounded-lg flex items-center justify-between gap-3"
+                            style={{ background: `${tier.accent}10`, border: `1px solid ${tier.accent}44` }}>
+                            <div>
+                              <div className="font-mono text-[9px] tracking-[1px] uppercase mb-0.5" style={{ color: tier.accent }}>
+                                Badge compatível com {RANK_LABEL[value as PoliceRank]}
+                              </div>
+                              <div className="font-mono text-base font-bold" style={{ color: tier.accent }}>
+                                {tier.min} – {tier.max}
+                              </div>
+                            </div>
+                            <div className="flex gap-1.5 flex-wrap justify-end">
+                              {[tier.min, Math.floor((tier.min + tier.max) / 2), tier.max].map((n) => (
+                                <button key={n} type="button"
+                                  onClick={() => setBadgeValue(String(n))}
+                                  className="font-mono text-[10px] px-2 py-0.5 rounded transition-all"
+                                  style={{
+                                    background: badgeValue === String(n) ? tier.accent : `${tier.accent}20`,
+                                    color:      badgeValue === String(n) ? "#0a0d12"  : tier.accent,
+                                    border: `1px solid ${tier.accent}44`,
+                                  }}>
+                                  #{n}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="mt-2">
+                            <label className="block font-mono text-[10px] tracking-[1px] uppercase mb-1" style={{ color: "#5a7a9a" }}>
+                              Número de badge <span style={{ color: "#3a4a5a" }}>(opcional)</span>
+                            </label>
+                            <input
+                              type="number"
+                              min={tier.min} max={tier.max}
+                              value={badgeValue}
+                              onChange={(e) => setBadgeValue(e.target.value)}
+                              placeholder={`${tier.min} – ${tier.max}`}
+                              style={{
+                                ...inputStyle,
+                                borderColor: badgeOutOfRange ? "#e24b4a" : badgeValid ? tier.accent : undefined,
+                              }}
+                              onFocus={focus} onBlur={blur}
+                            />
+                            {badgeOutOfRange && (
+                              <p className="font-mono text-[10px] mt-1" style={{ color: "#e24b4a" }}>
+                                Fora do range {tier.min}–{tier.max} para {RANK_LABEL[value as PoliceRank]}
+                              </p>
+                            )}
+                            {badgeValid && (
+                              <p className="font-mono text-[10px] mt-1" style={{ color: tier.accent }}>
+                                ✓ Badge #{badgeNum} será solicitada junto com a promoção
+                              </p>
+                            )}
+                          </div>
+                        </>
+                      );
+                    })()}
+                  </>
+                )}
+                {type === "UNIT" && (
+                  <select value={value} onChange={(e)=>setValue(e.target.value)} style={inputStyle} onFocus={focus} onBlur={blur}>
                     <option value="">Selecione...</option>
-                    {ALL_RANKS.map((r) => (
-                      <option key={r} value={r}>{RANK_LABEL[r]}</option>
+                    <option value="">Sem unidade</option>
+                    {ALL_UNITS.map((u) => (
+                      <option key={u} value={u}>{u}</option>
                     ))}
                   </select>
-                  {value && (() => {
-                    const tier = tierForRank(value as PoliceRank);
-                    if (!tier) return null;
-                    const badgeNum = parseInt(badgeValue);
-                    const badgeValid = badgeValue.trim() && !isNaN(badgeNum) && badgeNum >= tier.min && badgeNum <= tier.max;
-                    const badgeOutOfRange = badgeValue.trim() && !isNaN(badgeNum) && (badgeNum < tier.min || badgeNum > tier.max);
-                    return (
-                      <>
-                        <div className="mt-2 px-3 py-2.5 rounded-lg flex items-center justify-between gap-3"
-                          style={{ background: `${tier.accent}10`, border: `1px solid ${tier.accent}44` }}>
-                          <div>
-                            <div className="font-mono text-[9px] tracking-[1px] uppercase mb-0.5" style={{ color: tier.accent }}>
-                              Badge compatível com {RANK_LABEL[value as PoliceRank]}
-                            </div>
-                            <div className="font-mono text-base font-bold" style={{ color: tier.accent }}>
-                              {tier.min} – {tier.max}
-                            </div>
-                          </div>
-                          <div className="flex gap-1.5 flex-wrap justify-end">
-                            {[tier.min, Math.floor((tier.min + tier.max) / 2), tier.max].map((n) => (
-                              <button key={n} type="button"
-                                onClick={() => setBadgeValue(String(n))}
-                                className="font-mono text-[10px] px-2 py-0.5 rounded transition-all"
-                                style={{
-                                  background: badgeValue === String(n) ? tier.accent : `${tier.accent}20`,
-                                  color:      badgeValue === String(n) ? "#0a0d12"  : tier.accent,
-                                  border: `1px solid ${tier.accent}44`,
-                                }}>
-                                #{n}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
+                )}
+                {type === "BADGE" && (
+                  <input type="number" min={100} max={999} value={value}
+                    onChange={(e)=>setValue(e.target.value)}
+                    placeholder="Ex: 742"
+                    style={inputStyle} onFocus={focus} onBlur={blur}/>
+                )}
+                {type === "STATUS" && (
+                  <select value={value} onChange={(e)=>setValue(e.target.value)} style={inputStyle} onFocus={focus} onBlur={blur}>
+                    <option value="">Selecione...</option>
+                    {ALL_STATUSES.map((s) => (
+                      <option key={s} value={s}>{STATUS_LABEL[s]}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            )}
 
-                        <div className="mt-2">
-                          <label className="block font-mono text-[10px] tracking-[1px] uppercase mb-1" style={{ color: "#5a7a9a" }}>
-                            Número de badge <span style={{ color: "#3a4a5a" }}>(opcional)</span>
-                          </label>
-                          <input
-                            type="number"
-                            min={tier.min} max={tier.max}
-                            value={badgeValue}
-                            onChange={(e) => setBadgeValue(e.target.value)}
-                            placeholder={`${tier.min} – ${tier.max}`}
-                            style={{
-                              ...inputStyle,
-                              borderColor: badgeOutOfRange ? "#e24b4a" : badgeValid ? tier.accent : undefined,
-                            }}
-                            onFocus={focus} onBlur={blur}
-                          />
-                          {badgeOutOfRange && (
-                            <p className="font-mono text-[10px] mt-1" style={{ color: "#e24b4a" }}>
-                              Fora do range {tier.min}–{tier.max} para {RANK_LABEL[value as PoliceRank]}
-                            </p>
-                          )}
-                          {badgeValid && (
-                            <p className="font-mono text-[10px] mt-1" style={{ color: tier.accent }}>
-                              ✓ Badge #{badgeNum} será solicitada junto com a promoção
-                            </p>
-                          )}
-                        </div>
-                      </>
-                    );
-                  })()}
-                </>
-              )}
-              {type === "UNIT" && (
-                <select value={value} onChange={(e)=>setValue(e.target.value)} style={inputStyle} onFocus={focus} onBlur={blur}>
-                  <option value="">Selecione...</option>
-                  <option value="">Sem unidade</option>
-                  {ALL_UNITS.map((u) => (
-                    <option key={u} value={u}>{u}</option>
-                  ))}
-                </select>
-              )}
-              {type === "BADGE" && (
-                <input type="number" min={100} max={999} value={value}
-                  onChange={(e)=>setValue(e.target.value)}
-                  placeholder="Ex: 742"
-                  style={inputStyle} onFocus={focus} onBlur={blur}/>
-              )}
-              {type === "STATUS" && (
-                <select value={value} onChange={(e)=>setValue(e.target.value)} style={inputStyle} onFocus={focus} onBlur={blur}>
-                  <option value="">Selecione...</option>
-                  {ALL_STATUSES.map((s) => (
-                    <option key={s} value={s}>{STATUS_LABEL[s]}</option>
-                  ))}
-                </select>
-              )}
-            </div>
+            {/* Ausência — data de retorno */}
+            {type === "ABSENCE" && (
+              <div>
+                <label className="block font-mono text-[10px] tracking-[1px] uppercase mb-1" style={{color:"#f97316"}}>
+                  Data prevista de retorno
+                </label>
+                <input
+                  type="date"
+                  value={absenceDate}
+                  onChange={(e) => setAbsenceDate(e.target.value)}
+                  style={inputStyle}
+                  onFocus={focus} onBlur={blur}
+                />
+                <p className="font-mono text-[10px] mt-1.5" style={{color:"#5a7a9a"}}>
+                  Seu status será alterado para Ausente até a data informada.
+                </p>
+              </div>
+            )}
+
+            {/* Demissão — aviso */}
+            {type === "RESIGNATION" && (
+              <div className="p-3 rounded-lg" style={{background:"#2a101018",border:"1px solid #e24b4a33"}}>
+                <p className="font-mono text-[11px] leading-relaxed" style={{color:"#e24b4a"}}>
+                  Ao solicitar demissão, seu status será alterado para Inativo após aprovação.
+                  Esta ação é irreversível.
+                </p>
+              </div>
+            )}
 
             {/* Motivo */}
             <div>
               <label className="block font-mono text-[10px] tracking-[1px] uppercase mb-1" style={{color:"#5a7a9a"}}>
-                Motivo <span style={{color:"#3a4a5a"}}>(opcional)</span>
+                Motivo {type !== "RESIGNATION" && <span style={{color:"#3a4a5a"}}>(opcional)</span>}
               </label>
               <textarea value={reason} onChange={(e)=>setReason(e.target.value)} rows={2}
-                placeholder="Justificativa da solicitação..."
+                placeholder={type === "RESIGNATION" ? "Motivo da demissão..." : type === "ABSENCE" ? "Motivo da ausência..." : "Justificativa da solicitação..."}
                 style={{...inputStyle,resize:"none"}} onFocus={focus} onBlur={blur}/>
             </div>
 
@@ -520,9 +498,9 @@ function RoleCallModal({ officer, onClose }: {
               <button onClick={onClose}
                 className="flex-1 font-mono text-[11px] uppercase py-2.5 rounded"
                 style={{background:"#1c2a3a",color:"#5a7a9a"}}>Cancelar</button>
-              <button onClick={submit} disabled={saving||!value}
+              <button onClick={submit} disabled={saving||!canSubmit}
                 className="flex-1 font-mono text-[11px] uppercase py-2.5 rounded font-semibold"
-                style={{background:accent,color:"#0a0d12",opacity:saving||!value?0.6:1}}>
+                style={{background:accent,color:"#0a0d12",opacity:saving||!canSubmit?0.6:1}}>
                 {saving?"Enviando...":"Enviar"}
               </button>
             </div>
@@ -587,13 +565,13 @@ export default function OfficerProfilePage() {
   const { user } = useAuth();
   const router   = useRouter();
 
-  const [officer,      setOfficer]      = useState<Officer | null>(null);
-  const [myOfficer,    setMyOfficer]    = useState<Officer | null>(null);
-  const [loading,      setLoading]      = useState(true);
-  const [showEdit,      setShowEdit]      = useState(false);
-  const [showFicha,     setShowFicha]     = useState(false);
-  const [showRoleCall,  setShowRoleCall]  = useState(false);
-  const [showEditUnits, setShowEditUnits] = useState(false);
+  const [officer,        setOfficer]        = useState<Officer | null>(null);
+  const [myOfficer,      setMyOfficer]      = useState<Officer | null>(null);
+  const [loading,        setLoading]        = useState(true);
+  const [showEdit,       setShowEdit]       = useState(false);
+  const [showFicha,      setShowFicha]      = useState(false);
+  const [showRoleCall,   setShowRoleCall]   = useState(false);
+  const [confirmDelete,  setConfirmDelete]  = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -611,7 +589,7 @@ export default function OfficerProfilePage() {
   const canEditFicha   = isOwnProfile || (myLevel >= 9 && !!officer && RANK_ORDER[officer.rank] < myLevel);
   const canEditProfile = isOwnProfile;
   const canRoleCall    = isOwnProfile;
-  const canEditUnits   = myLevel >= 10 && !isOwnProfile && !!officer && RANK_ORDER[officer.rank] < myLevel;
+  const canDelete      = (user?.role === "LEAD" || user?.role === "ADM") && !isOwnProfile;
 
   if (loading) {
     return (
@@ -657,10 +635,20 @@ export default function OfficerProfilePage() {
       {showRoleCall && (
         <RoleCallModal officer={officer} onClose={()=>setShowRoleCall(false)} />
       )}
-      {showEditUnits && (
-        <EditUnitsModal officer={officer} onClose={()=>setShowEditUnits(false)}
-          onSaved={(o)=>{ setOfficer(o); setShowEditUnits(false); }} />
-      )}
+      <ConfirmModal
+        open={confirmDelete}
+        title="Remover Membro"
+        description={`O oficial ${officer.callsign || officer.fullName} e todos os seus dados serão removidos permanentemente. Esta ação não pode ser desfeita.`}
+        confirmLabel="Remover"
+        onConfirm={async () => {
+          try {
+            await api.delete(`/officers/${officer.id}`);
+            router.push("/police/roster");
+          } catch { /* handled by UI */ }
+          finally { setConfirmDelete(false); }
+        }}
+        onCancel={() => setConfirmDelete(false)}
+      />
 
       {/* Back */}
       <button onClick={()=>router.push("/police/roster")}
@@ -748,11 +736,11 @@ export default function OfficerProfilePage() {
               Editar Ficha
             </button>
           )}
-          {canEditUnits && (
-            <button onClick={()=>setShowEditUnits(true)}
+          {canDelete && (
+            <button onClick={()=>setConfirmDelete(true)}
               className="font-mono text-[10px] tracking-[1px] uppercase px-3 py-2 rounded"
-              style={{background:"#0a1f2a",color:"#4a90e2",border:"1px solid #4a90e244"}}>
-              Unidades
+              style={{background:"#1a0a0a",color:"#e24b4a",border:"1px solid #e24b4a33"}}>
+              Remover Membro
             </button>
           )}
         </div>
