@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { api } from "@/lib/api";
-import { Officer, PoliceUnit, UnitAviso } from "@/types";
+import { Officer, UnitAviso } from "@/types";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { UnitAvisosSection } from "./UnitAvisosSection";
 import { UnitPageShell } from "./UnitPageShell";
 
@@ -22,6 +23,7 @@ export function UnitDashboard({ unit }: { unit: string }) {
   const [officers, setOfficers] = useState<Officer[]>([]);
   const [avisos, setAvisos]     = useState<UnitAviso[]>([]);
   const [loading, setLoading]   = useState(true);
+  const [removing, setRemoving] = useState<Officer | null>(null);
 
   const canManage =
     user?.role === "LEAD" || user?.role === "SUPERVISOR" || user?.role === "ADM";
@@ -48,9 +50,31 @@ export function UnitDashboard({ unit }: { unit: string }) {
     { label: "Total na Unidade",   value: loading ? "—" : total,     accent: "#4a90e2" },
   ];
 
+  async function handleRemoveFromUnit() {
+    if (!removing) return;
+    try {
+      await api.delete(`/officers/${removing.id}/units/${unit}`);
+      setOfficers((prev) => prev.map((o) =>
+        o.id === removing.id
+          ? { ...o, unitNames: o.unitNames.filter((u) => u !== unit) }
+          : o
+      ));
+    } catch { /* ConfirmModal closes */ }
+    finally { setRemoving(null); }
+  }
+
   return (
     <UnitPageShell unit={unit} page="dashboard">
       <div className="space-y-4">
+
+      <ConfirmModal
+        open={!!removing}
+        title="Remover da Unidade"
+        description={`${removing?.fullName ?? ""} será removido da unidade ${unit}. O membro continuará no efetivo da polícia.`}
+        confirmLabel="Remover"
+        onConfirm={handleRemoveFromUnit}
+        onCancel={() => setRemoving(null)}
+      />
 
         {/* Stats */}
         <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
@@ -98,6 +122,13 @@ export function UnitDashboard({ unit }: { unit: string }) {
                       color: o.status === "ACTIVE" ? "#3dd68c" : "#5a7a9a",
                     }}
                   >{o.status === "ACTIVE" ? "Ativo" : "Inativo"}</span>
+                  {canManage && (
+                    <button onClick={() => setRemoving(o)}
+                      className="font-mono text-[9px] tracking-[0.5px] uppercase px-2 py-1 rounded shrink-0"
+                      style={{ color: "#e24b4a", background: "#1a0a0a", border: "1px solid #e24b4a33" }}>
+                      Remover
+                    </button>
+                  )}
                 </div>
               ))}
               {unitOfficers.length > 10 && (
