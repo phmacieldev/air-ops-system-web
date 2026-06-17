@@ -432,38 +432,66 @@ function RoleCallModal({ officer, onClose }: {
                     })()}
                   </>
                 )}
-                {type === "UNIT" && (
-                  <div className="space-y-2">
-                    <p className="font-mono text-[10px]" style={{color:"#5a7a9a"}}>
-                      Selecione as unidades desejadas:
-                    </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      {ALL_UNITS.map((u) => {
-                        const us = UNIT_STYLES[u];
-                        const active = selectedUnits.includes(u);
-                        return (
-                          <button key={u} type="button"
-                            onClick={() => setSelectedUnits((prev) =>
-                              active ? prev.filter((x) => x !== u) : [...prev, u]
-                            )}
-                            className="font-mono text-[10px] tracking-[1px] uppercase py-2 rounded px-3 text-left"
-                            style={{
-                              background: active ? `${us.color}18` : "#0a0d12",
-                              color:      active ? us.color : "#5a7a9a",
-                              border:     active ? `1px solid ${us.color}66` : "1px solid #1c2a3a",
-                            }}>
-                            {u}
-                          </button>
-                        );
-                      })}
+                {type === "UNIT" && (() => {
+                  const currentUnits = officer.unitNames ?? [];
+                  const available = ALL_UNITS.filter((u) => !currentUnits.includes(u));
+                  return (
+                    <div className="space-y-2">
+                      {currentUnits.length > 0 && (
+                        <div>
+                          <p className="font-mono text-[10px] mb-1.5" style={{color:"#5a7a9a"}}>Unidades atuais:</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {currentUnits.map((u) => {
+                              const us = UNIT_STYLES[u as PoliceUnit];
+                              return (
+                                <span key={u} className="font-mono text-[9px] tracking-[1px] uppercase px-2 py-1 rounded"
+                                  style={{background:us?.bg,color:us?.color,border:`1px solid ${us?.border}`}}>
+                                  {u}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                      {available.length === 0 ? (
+                        <p className="font-mono text-[10px]" style={{color:"#5a7a9a"}}>
+                          Já faz parte de todas as unidades.
+                        </p>
+                      ) : (
+                        <>
+                          <p className="font-mono text-[10px]" style={{color:"#5a7a9a"}}>
+                            Selecione as unidades para ingressar:
+                          </p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {available.map((u) => {
+                              const us = UNIT_STYLES[u];
+                              const active = selectedUnits.includes(u);
+                              return (
+                                <button key={u} type="button"
+                                  onClick={() => setSelectedUnits((prev) =>
+                                    active ? prev.filter((x) => x !== u) : [...prev, u]
+                                  )}
+                                  className="font-mono text-[10px] tracking-[1px] uppercase py-2 rounded px-3 text-left"
+                                  style={{
+                                    background: active ? `${us.color}18` : "#0a0d12",
+                                    color:      active ? us.color : "#5a7a9a",
+                                    border:     active ? `1px solid ${us.color}66` : "1px solid #1c2a3a",
+                                  }}>
+                                  {u}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {selectedUnits.length > 0 && (
+                            <p className="font-mono text-[10px]" style={{color:"#4a90e2"}}>
+                              {selectedUnits.length} unidade{selectedUnits.length > 1 ? "s" : ""} selecionada{selectedUnits.length > 1 ? "s" : ""}
+                            </p>
+                          )}
+                        </>
+                      )}
                     </div>
-                    {selectedUnits.length > 0 && (
-                      <p className="font-mono text-[10px]" style={{color:"#4a90e2"}}>
-                        {selectedUnits.length} unidade{selectedUnits.length > 1 ? "s" : ""} selecionada{selectedUnits.length > 1 ? "s" : ""}
-                      </p>
-                    )}
-                  </div>
-                )}
+                  );
+                })()}
                 {type === "BADGE" && (
                   <input type="number" min={100} max={999} value={value}
                     onChange={(e)=>setValue(e.target.value)}
