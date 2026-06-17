@@ -242,6 +242,7 @@ function RoleCallModal({ officer, onClose }: {
 }) {
   const [type,       setType]       = useState<RoleCallType>("PROMOTION");
   const [value,      setValue]      = useState("");
+  const [selectedUnits, setSelectedUnits] = useState<PoliceUnit[]>([]);
   const [badgeValue, setBadgeValue] = useState("");
   const [reason,     setReason]     = useState("");
   const [absenceDate, setAbsenceDate] = useState("");
@@ -264,7 +265,9 @@ function RoleCallModal({ officer, onClose }: {
     ? true
     : type === "ABSENCE"
       ? !!absenceDate
-      : !!value;
+      : type === "UNIT"
+        ? selectedUnits.length > 0
+        : !!value;
 
   async function submit() {
     if (!canSubmit) return;
@@ -280,6 +283,8 @@ function RoleCallModal({ officer, onClose }: {
         if (reason.trim()) {
           submitReason = reason.trim();
         }
+      } else if (type === "UNIT") {
+        requestedValue = selectedUnits.join(",");
       }
 
       const requests: Promise<unknown>[] = [
@@ -331,7 +336,7 @@ function RoleCallModal({ officer, onClose }: {
               </label>
               <div className="grid grid-cols-2 gap-2">
                 {TYPE_OPTS.map((t) => (
-                  <button key={t.value} type="button" onClick={() => { setType(t.value); setValue(""); setBadgeValue(""); setAbsenceDate(""); }}
+                  <button key={t.value} type="button" onClick={() => { setType(t.value); setValue(""); setSelectedUnits([]); setBadgeValue(""); setAbsenceDate(""); }}
                     className="font-mono text-[10px] tracking-[1px] uppercase py-2 rounded text-left px-3"
                     style={{
                       background: type===t.value ? `${t.accent}18` : "#0a0d12",
@@ -428,13 +433,36 @@ function RoleCallModal({ officer, onClose }: {
                   </>
                 )}
                 {type === "UNIT" && (
-                  <select value={value} onChange={(e)=>setValue(e.target.value)} style={inputStyle} onFocus={focus} onBlur={blur}>
-                    <option value="">Selecione...</option>
-                    <option value="">Sem unidade</option>
-                    {ALL_UNITS.map((u) => (
-                      <option key={u} value={u}>{u}</option>
-                    ))}
-                  </select>
+                  <div className="space-y-2">
+                    <p className="font-mono text-[10px]" style={{color:"#5a7a9a"}}>
+                      Selecione as unidades desejadas:
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {ALL_UNITS.map((u) => {
+                        const us = UNIT_STYLES[u];
+                        const active = selectedUnits.includes(u);
+                        return (
+                          <button key={u} type="button"
+                            onClick={() => setSelectedUnits((prev) =>
+                              active ? prev.filter((x) => x !== u) : [...prev, u]
+                            )}
+                            className="font-mono text-[10px] tracking-[1px] uppercase py-2 rounded px-3 text-left"
+                            style={{
+                              background: active ? `${us.color}18` : "#0a0d12",
+                              color:      active ? us.color : "#5a7a9a",
+                              border:     active ? `1px solid ${us.color}66` : "1px solid #1c2a3a",
+                            }}>
+                            {u}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {selectedUnits.length > 0 && (
+                      <p className="font-mono text-[10px]" style={{color:"#4a90e2"}}>
+                        {selectedUnits.length} unidade{selectedUnits.length > 1 ? "s" : ""} selecionada{selectedUnits.length > 1 ? "s" : ""}
+                      </p>
+                    )}
+                  </div>
                 )}
                 {type === "BADGE" && (
                   <input type="number" min={100} max={999} value={value}

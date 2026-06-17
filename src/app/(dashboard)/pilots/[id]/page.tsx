@@ -267,6 +267,7 @@ export default function PilotProfilePage() {
   const [showOwnEdit,    setShowOwnEdit]    = useState(false);
   const [confirmDelete,  setConfirmDelete]  = useState(false);
   const [saving,         setSaving]         = useState(false);
+  const [error,          setError]          = useState<string | null>(null);
 
   const canManage    = user?.role === "LEAD" || user?.role === "SUPERVISOR" || user?.role === "ADM";
   const canDelete    = user?.role === "LEAD" || user?.role === "ADM";
@@ -292,18 +293,20 @@ export default function PilotProfilePage() {
   async function changeRank(rankId: string) {
     if (!pilot) return;
     setSaving(true);
+    setError(null);
     try {
       const updated = await api.patch<Pilot>(`/pilots/${pilot.id}/rank`, { rankId });
       setPilot(updated);
       api.invalidate("/pilots/me");
       setShowModal(false);
-    } catch { /* silently ignore */ }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : "Erro ao alterar rank"); }
     finally { setSaving(false); }
   }
 
   async function saveEdit(data: { callsign: string; profileImageUrl: string; status: string }) {
     if (!pilot) return;
     setSaving(true);
+    setError(null);
     try {
       const updated = await api.put<Pilot>(`/pilots/${pilot.id}`, {
         callsign:        data.callsign,
@@ -312,13 +315,14 @@ export default function PilotProfilePage() {
       });
       setPilot(updated);
       setShowEdit(false);
-    } catch { /* silently ignore */ }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : "Erro ao salvar"); }
     finally { setSaving(false); }
   }
 
   async function saveOwnProfile(data: { callsign: string; profileImageUrl: string; status: string }) {
     if (!pilot) return;
     setSaving(true);
+    setError(null);
     try {
       const updated = await api.patch<Pilot>(`/pilots/${pilot.id}/profile`, {
         callsign:        data.callsign,
@@ -327,17 +331,20 @@ export default function PilotProfilePage() {
       setPilot(updated);
       api.invalidate("/pilots/me");
       setShowOwnEdit(false);
-    } catch { /* silently ignore */ }
+    } catch (err: unknown) { setError(err instanceof Error ? err.message : "Erro ao salvar"); }
     finally { setSaving(false); }
   }
 
   async function deletePilot() {
     if (!pilot) return;
+    setError(null);
     try {
       await api.delete(`/pilots/${pilot.id}`);
       router.push("/pilots");
-    } catch { /* silently ignore */ }
-    finally { setConfirmDelete(false); }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Erro ao remover piloto");
+      setConfirmDelete(false);
+    }
   }
 
   if (loading) {
@@ -422,6 +429,14 @@ export default function PilotProfilePage() {
         style={{ color: "#5a7a9a" }}>
         ← Roster
       </button>
+
+      {error && (
+        <div className="flex items-center justify-between rounded px-3 py-2"
+          style={{ background: "#1a0a0a", border: "1px solid #e24b4a33" }}>
+          <span className="font-mono text-[11px]" style={{ color: "#e24b4a" }}>{error}</span>
+          <button onClick={() => setError(null)} className="font-mono text-xs" style={{ color: "#e24b4a" }}>×</button>
+        </div>
+      )}
 
       {/* Hero card */}
       <div className="rounded-lg p-5 flex flex-col sm:flex-row gap-5 items-start sm:items-center"

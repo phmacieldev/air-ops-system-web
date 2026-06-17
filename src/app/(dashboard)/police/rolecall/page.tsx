@@ -20,7 +20,7 @@ const STATUS_LABEL: Record<OfficerStatus, string> = {
 function typeInfo(type: string, value: string) {
   switch (type) {
     case "PROMOTION":   return { label:"Promoção",   display: RANK_LABEL[value as PoliceRank] ?? value, accent:"#c084fc" };
-    case "UNIT":        return { label:"Unidade",    display: value ? (UNIT_LABEL[value as PoliceUnit] ?? value) : "Sem unidade", accent:"#4a90e2" };
+    case "UNIT":        return { label:"Unidade",    display: value ? value.split(",").map((v) => UNIT_LABEL[v.trim() as PoliceUnit] ?? v.trim()).join(", ") : "Sem unidade", accent:"#4a90e2" };
     case "BADGE":       return { label:"Badge",      display: `#${value}`, accent:"#e8c97e" };
     case "STATUS":      return { label:"Status",     display: STATUS_LABEL[value as OfficerStatus] ?? value, accent:"#3dd68c" };
     case "RESIGNATION": return { label:"Demissão",   display: "Pedido de demissão", accent:"#e24b4a" };
