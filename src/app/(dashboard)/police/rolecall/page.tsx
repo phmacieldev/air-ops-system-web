@@ -14,16 +14,18 @@ const UNIT_LABEL: Record<PoliceUnit, string> = {
   CID:"CID",HEAT:"HEAT",ASD:"ASD",METRO:"METRO",MU:"MU",FTO:"FTO",
 };
 const STATUS_LABEL: Record<OfficerStatus, string> = {
-  ACTIVE:"Ativo",INACTIVE:"Inativo",SUSPENDED:"Suspenso",TRAINING:"Treinamento",
+  ACTIVE:"Ativo",INACTIVE:"Inativo",SUSPENDED:"Suspenso",TRAINING:"Treinamento",ABSENT:"Ausente",
 };
 
 function typeInfo(type: string, value: string) {
   switch (type) {
-    case "PROMOTION": return { label:"Promoção", display: RANK_LABEL[value as PoliceRank] ?? value, accent:"#c084fc" };
-    case "UNIT":      return { label:"Unidade",  display: value ? (UNIT_LABEL[value as PoliceUnit] ?? value) : "Sem unidade", accent:"#4a90e2" };
-    case "BADGE":     return { label:"Badge",    display: `#${value}`, accent:"#e8c97e" };
-    case "STATUS":    return { label:"Status",   display: STATUS_LABEL[value as OfficerStatus] ?? value, accent:"#3dd68c" };
-    default:          return { label: type,      display: value, accent:"#5a7a9a" };
+    case "PROMOTION":   return { label:"Promoção",   display: RANK_LABEL[value as PoliceRank] ?? value, accent:"#c084fc" };
+    case "UNIT":        return { label:"Unidade",    display: value ? (UNIT_LABEL[value as PoliceUnit] ?? value) : "Sem unidade", accent:"#4a90e2" };
+    case "BADGE":       return { label:"Badge",      display: `#${value}`, accent:"#e8c97e" };
+    case "STATUS":      return { label:"Status",     display: STATUS_LABEL[value as OfficerStatus] ?? value, accent:"#3dd68c" };
+    case "RESIGNATION": return { label:"Demissão",   display: "Pedido de demissão", accent:"#e24b4a" };
+    case "ABSENCE":     return { label:"Ausência",   display: `Retorno: ${value}`, accent:"#f97316" };
+    default:            return { label: type,        display: value, accent:"#5a7a9a" };
   }
 }
 

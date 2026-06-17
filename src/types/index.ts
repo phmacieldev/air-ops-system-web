@@ -138,7 +138,7 @@ export type PoliceRank =
 
 export type PoliceUnit = "CID" | "HEAT" | "ASD" | "METRO" | "MU" | "FTO";
 
-export type OfficerStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED" | "TRAINING";
+export type OfficerStatus = "ACTIVE" | "INACTIVE" | "SUSPENDED" | "TRAINING" | "ABSENT";
 
 export interface OfficerWeapon {
   class: "CLASSE_1" | "CLASSE_2" | "CLASSE_3" | "TASER";
@@ -188,7 +188,7 @@ export interface AsdProfile {
   asdStatus: string | null;
 }
 
-export type RoleCallType   = "PROMOTION" | "UNIT" | "BADGE" | "STATUS";
+export type RoleCallType   = "PROMOTION" | "UNIT" | "BADGE" | "STATUS" | "RESIGNATION" | "ABSENCE";
 export type RoleCallStatus = "PENDING" | "APPROVED" | "REJECTED";
 
 export interface RoleCallRequest {
